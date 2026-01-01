@@ -83,6 +83,10 @@ const UniversalSelector = () => {
   // 新增模式: null, 'category', 'subcategory', 'tab'
   const [addingType, setAddingType] = useState(null);
   const [newName, setNewName] = useState('');
+  
+  // 新增 Tab 時的目標分類狀態
+  const [targetCatForAdd, setTargetCatForAdd] = useState('');
+  const [targetSubForAdd, setTargetSubForAdd] = useState('');
 
   const [currentKing, setCurrentKing] = useState(null);
   const [challenger, setChallenger] = useState(null);
@@ -288,8 +292,12 @@ const UniversalSelector = () => {
             setActiveTab('新清單');
         }
     } else if (addingType === 'tab') {
-        if (activeCategory && activeSubcategory && !newData[activeCategory][activeSubcategory][name]) {
-            newData[activeCategory][activeSubcategory][name] = [];
+        // 使用選定的分類，而非預設 active
+        if (targetCatForAdd && targetSubForAdd && !newData[targetCatForAdd][targetSubForAdd][name]) {
+            newData[targetCatForAdd][targetSubForAdd][name] = [];
+            // 自動切換到新建立的 tab 位置
+            setActiveCategory(targetCatForAdd);
+            setActiveSubcategory(targetSubForAdd);
             setActiveTab(name);
         }
     }
@@ -372,14 +380,74 @@ const UniversalSelector = () => {
            </div>
         </div>
         
-        {/* 通用新增輸入框 */}
-        {addingType && (
+        {/* 通用新增輸入框 (僅限新增 大分類/小分類 時顯示條狀) */}
+        {addingType && addingType !== 'tab' && (
             <div className="bg-slate-900 p-3 flex gap-2 items-center animate-fade-in">
-                <span className="text-white text-sm">新增{addingType === 'category' ? '大分類' : addingType === 'subcategory' ? '小分類' : '清單'}:</span>
+                <span className="text-white text-sm">新增{addingType === 'category' ? '大分類' : '小分類'}:</span>
                 <input value={newName} onChange={e=>setNewName(e.target.value)} className="flex-1 px-2 py-1 rounded text-black text-sm" autoFocus/>
                 <button onClick={handleAddSubmit} className="bg-teal-500 text-white px-3 py-1 rounded text-sm">確定</button>
                 <button onClick={()=>setAddingType(null)} className="text-slate-400"><Icon name="X" className="w-4 h-4"/></button>
             </div>
+        )}
+
+        {/* 新增清單(Tab) 的專用彈出視窗 */}
+        {addingType === 'tab' && (
+             <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl max-h-[80vh]">
+                    <div className="bg-slate-800 p-4 text-white font-bold flex justify-between items-center">
+                        <span>新增清單</span>
+                        <button onClick={()=>setAddingType(null)}><Icon name="X" className="w-5 h-5"/></button>
+                    </div>
+                    
+                    <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
+                        {/* 輸入名稱 */}
+                        <div>
+                            <div className="text-sm font-bold text-slate-500 mb-1">清單名稱</div>
+                            <input value={newName} onChange={e=>setNewName(e.target.value)} className="w-full border p-2 rounded-lg text-black" placeholder="例如：早餐選擇" autoFocus/>
+                        </div>
+
+                        {/* 步驟 1: 選擇大分類 */}
+                        <div>
+                            <div className="text-sm font-bold text-slate-500 mb-1">歸屬大分類</div>
+                            <div className="flex flex-wrap gap-2">
+                                {Object.keys(allData).map(cat => (
+                                    <button key={cat} 
+                                        onClick={()=>{ setTargetCatForAdd(cat); setTargetSubForAdd(''); }}
+                                        className={`px-3 py-2 rounded-lg text-sm border ${targetCatForAdd===cat ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-300'}`}>
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 步驟 2: 選擇小分類 */}
+                        {targetCatForAdd && (
+                            <div className="animate-fade-in">
+                                <div className="text-sm font-bold text-slate-500 mb-1 mt-2">歸屬小分類</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.keys(allData[targetCatForAdd] || {}).map(sub => (
+                                        <button key={sub}
+                                            onClick={()=>setTargetSubForAdd(sub)}
+                                            className={`px-3 py-2 rounded-lg text-sm border ${targetSubForAdd===sub ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-700 border-slate-300'}`}>
+                                            {sub}
+                                        </button>
+                                    ))}
+                                    {Object.keys(allData[targetCatForAdd] || {}).length === 0 && <span className="text-xs text-red-400">無小分類，請先新增小分類</span>}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-4 border-t bg-slate-50 flex gap-2">
+                        <button onClick={()=>setAddingType(null)} className="flex-1 py-2 text-slate-500 bg-white border rounded-lg">取消</button>
+                        <button onClick={handleAddSubmit} 
+                            disabled={!newName || !targetCatForAdd || !targetSubForAdd}
+                            className="flex-1 py-2 bg-teal-500 text-white rounded-lg font-bold disabled:bg-slate-300 disabled:cursor-not-allowed">
+                            確認新增
+                        </button>
+                    </div>
+                </div>
+             </div>
         )}
 
         {/* 第一層：Category (大分類) */}
@@ -437,7 +505,7 @@ const UniversalSelector = () => {
                 {tab}
              </button>
            ))}
-           {activeSubcategory && <button onClick={()=>setAddingType('tab')} className="px-2 py-1 bg-slate-500 text-slate-300 rounded-full hover:bg-slate-400"><Icon name="Plus" className="w-4 h-4"/></button>}
+           {activeSubcategory && <button onClick={()=>{ setAddingType('tab'); setTargetCatForAdd(activeCategory); setTargetSubForAdd(activeSubcategory); }} className="px-2 py-1 bg-slate-500 text-slate-300 rounded-full hover:bg-slate-400"><Icon name="Plus" className="w-4 h-4"/></button>}
         </div>
         
         <div className="flex-1 p-4 overflow-y-auto">
