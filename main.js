@@ -414,61 +414,45 @@ const UniversalSelector = () => {
   const deleteItem = (type, name) => {
       if (!confirm(`確定刪除 ${type}「${name}」嗎？`)) return;
       
-      // 使用白名單重建策略 (Whitelist Reconstruction)
-      // 邏輯：建立新物件，只複製不需要刪除的 Key，藉此保證刪除成功並處理排序
-      const sourceData = allData; // 使用當前狀態作為來源
-      let newData = {};
+      // 1. 先進行深拷貝
+      let newData = JSON.parse(JSON.stringify(allData));
       
       if (type === 'category') {
-          // 重建 Root：跳過要刪除的大分類
-          Object.keys(sourceData).forEach(k => {
-              if (k !== name) newData[k] = sourceData[k];
-          });
+          // 直接刪除
+          delete newData[name];
           
           if (Object.keys(newData).length === 0) newData['新大分類'] = {};
           setActiveCategory(Object.keys(newData)[0]);
       } 
       else if (type === 'subcategory') {
-          const currentCatContent = sourceData[activeCategory];
-          const newCatContent = {};
+          // 1. 刪除小分類 (這是最重要的，先確保它消失)
+          delete newData[activeCategory][name];
           
-          // 重建大分類：跳過要刪除的小分類
-          Object.keys(currentCatContent).forEach(k => {
-              if (k !== name) newCatContent[k] = currentCatContent[k];
-          });
+          // 2. 處理大分類排序：先取出內容，刪除 Key，再重新插入到最前
+          const catContent = newData[activeCategory];
+          delete newData[activeCategory];
+          newData = { [activeCategory]: catContent, ...newData };
           
-          // 重建 Root：將修改過的大分類排到最前
-          newData = { [activeCategory]: newCatContent };
-          Object.keys(sourceData).forEach(k => {
-              if (k !== activeCategory) newData[k] = sourceData[k];
-          });
-          
-          setActiveSubcategory(Object.keys(newCatContent)[0] || '');
+          setActiveSubcategory(Object.keys(catContent)[0] || '');
       } 
       else if (type === 'tab') {
-          const currentSubContent = sourceData[activeCategory][activeSubcategory];
-          const newSubContent = {};
+          // 1. 刪除 Tab (這是最重要的，先確保它消失)
+          delete newData[activeCategory][activeSubcategory][name];
           
-          // 重建小分類：跳過要刪除的 Tab (絕對不會複製到被刪除的項目)
-          Object.keys(currentSubContent).forEach(k => {
-              if (k !== name) newSubContent[k] = currentSubContent[k];
-          });
+          // 2. 處理小分類排序：取出小分類內容，刪除 Key，再插入到大分類最前
+          const subContent = newData[activeCategory][activeSubcategory];
+          delete newData[activeCategory][activeSubcategory];
+          // 注意：這裡直接修改 newData 內的大分類物件
+          newData[activeCategory] = { [activeSubcategory]: subContent, ...newData[activeCategory] };
           
-          // 重建大分類：將修改過的小分類排到最前
-          const currentCatContent = sourceData[activeCategory];
-          const newCatContent = { [activeSubcategory]: newSubContent };
-          Object.keys(currentCatContent).forEach(k => {
-              if (k !== activeSubcategory) newCatContent[k] = currentCatContent[k];
-          });
-          
-          // 重建 Root：將修改過的大分類排到最前
-          newData = { [activeCategory]: newCatContent };
-          Object.keys(sourceData).forEach(k => {
-              if (k !== activeCategory) newData[k] = sourceData[k];
-          });
+          // 3. 處理大分類排序：取出大分類內容，刪除 Key，再插入到 Root 最前
+          const catContent = newData[activeCategory];
+          delete newData[activeCategory];
+          newData = { [activeCategory]: catContent, ...newData };
 
-          setActiveTab(Object.keys(newSubContent)[0] || '');
+          setActiveTab(Object.keys(subContent)[0] || '');
       }
+      
       updateData(newData);
   };
 
