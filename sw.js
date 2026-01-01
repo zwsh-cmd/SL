@@ -2,6 +2,7 @@ const CACHE_NAME = 'lunch-selector-v1';
 const urlsToCache = [
   './',
   './index.html',
+  './main.js',
   './manifest.json',
   './icon.svg'
 ];
