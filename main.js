@@ -142,50 +142,79 @@ const UniversalSelector = () => {
         const unsubDoc = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
           setLoading(false);
           if (docSnap.exists()) {
-            let data = docSnap.data().categories || {};
+            const rawData = docSnap.data().categories || {};
+            let cleanData = {};
             
-            // --- 資料結構強力修復區 ---
-            // 1. 如果最外層是陣列 (舊資料)，包進「未分類」
-            if (Array.isArray(data)) { 
-                data = { '未分類': { '預設清單': data } };
-            } else {
-                // 2. 遍歷檢查每個大分類
-                Object.keys(data).forEach(groupKey => {
-                    // 如果大分類的值竟然是陣列 (格式錯誤)，把它包成物件
-                    if (Array.isArray(data[groupKey])) {
-                        data[groupKey] = { '預設清單': data[groupKey] };
-                    } 
-                    // 如果大分類的值不是物件 (甚至是字串)，重置為空物件
-                    else if (typeof data[groupKey] !== 'object' || data[groupKey] === null) {
-                        data[groupKey] = {};
+            // --- 嚴格資料重建邏輯 ---
+            // 目標：確保結構絕對是 Group(Object) -> Category(Array) -> Items(Strings)
+            
+            // 1. 建立一個「資源回收筒」來放那些結構錯誤的資料，避免它們變成大分類
+            let recoveredGroup = {}; 
+            let hasRecovered = false;
+
+            // 2. 檢查最外層 (原本應該是 Group)
+            if (typeof rawData === 'object' && !Array.isArray(rawData) && rawData !== null) {
+                Object.keys(rawData).forEach(key => {
+                    const val = rawData[key];
+
+                    // 情況 A: 它是正確的大分類 (是一個物件，且不是陣列)
+                    if (typeof val === 'object' && !Array.isArray(val) && val !== null) {
+                        cleanData[key] = {}; // 建立正確的大分類
+                        // 檢查裡面的小分類
+                        Object.keys(val).forEach(subKey => {
+                            const subVal = val[subKey];
+                            if (Array.isArray(subVal)) {
+                                // 這是正確的小分類 (陣列)，保留它
+                                cleanData[key][subKey] = subVal;
+                            } else {
+                                // 錯誤：大分類裡面有怪東西 (不是陣列)，忽略或轉為空陣列
+                            }
+                        });
                     }
-
-                    // 3. 遍歷檢查每個小分類
-                    Object.keys(data[groupKey]).forEach(catKey => {
-                        // 如果小分類的值不是陣列 (格式錯誤)，重置為空陣列
-                        if (!Array.isArray(data[groupKey][catKey])) {
-                            data[groupKey][catKey] = [];
-                        }
-                    });
+                    // 情況 B: 它是小分類 (陣列) 卻跑到了最外層 -> 移入「資源回收/未分類」群組
+                    else if (Array.isArray(val)) {
+                        recoveredGroup[key] = val;
+                        hasRecovered = true;
+                    }
+                    // 情況 C: 它是項目 (字串) 卻跑到了最外層 -> 移入「資源回收/未分類」群組的「雜項」
+                    else if (typeof val === 'string' || typeof val === 'number') {
+                        if (!recoveredGroup['雜項']) recoveredGroup['雜項'] = [];
+                        recoveredGroup['雜項'].push(String(val));
+                        hasRecovered = true;
+                    }
                 });
+            } else if (Array.isArray(rawData)) {
+                // 整個資料庫結構都是錯的 (舊版陣列資料)
+                recoveredGroup['舊資料備份'] = rawData;
+                hasRecovered = true;
             }
-            // --- 修復結束 ---
 
-            setAllData(data);
+            // 如果有回收的資料，將它們放入一個專門的群組，而不是散落在外
+            if (hasRecovered) {
+                cleanData['未分類群組'] = recoveredGroup;
+            }
+
+            // 若完全沒資料，使用預設值
+            if (Object.keys(cleanData).length === 0) cleanData = DEFAULT_CATEGORIES;
+            // --- 重建結束 ---
+
+            setAllData(cleanData);
             
-            // 智慧設定預設選中項 (防止選中不存在的項目導致白屏)
-            const groups = Object.keys(data);
+            // 智慧設定預設選中項
+            const groups = Object.keys(cleanData);
             if (groups.length > 0) {
+               // 優先保持原本選中的 Group，若不存在則選第一個
                setActiveGroup(prevGroup => {
-                   const targetGroup = data[prevGroup] ? prevGroup : groups[0];
-                   // 設定完 Group 後，接著設定 Tab
-                   const cats = Object.keys(data[targetGroup] || {});
+                   const nextGroup = cleanData[prevGroup] ? prevGroup : groups[0];
+                   
+                   // 接著設定 Tab (小分類)
+                   const cats = Object.keys(cleanData[nextGroup] || {});
                    if (cats.length > 0) {
-                       setActiveTab(prevTab => (data[targetGroup][prevTab]) ? prevTab : cats[0]);
+                       setActiveTab(prevTab => (cleanData[nextGroup][prevTab]) ? prevTab : cats[0]);
                    } else {
                        setActiveTab('');
                    }
-                   return targetGroup;
+                   return nextGroup;
                });
             }
           } else {
