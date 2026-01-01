@@ -413,36 +413,40 @@ const UniversalSelector = () => {
 
   const deleteItem = (type, name) => {
       if (!confirm(`確定刪除 ${type}「${name}」嗎？`)) return;
+      
+      // 使用解構語法來排除(刪除)項目，同時重組順序
       let newData = JSON.parse(JSON.stringify(allData));
       
       if (type === 'category') {
-          delete newData[name];
+          const { [name]: deleted, ...remainingCats } = newData;
+          newData = remainingCats;
+          
           if (Object.keys(newData).length === 0) newData['新大分類'] = {};
           setActiveCategory(Object.keys(newData)[0]);
-      } else if (type === 'subcategory') {
-          delete newData[activeCategory][name];
+      } 
+      else if (type === 'subcategory') {
+          // 1. 從大分類中排除該小分類
+          const { [name]: deletedSub, ...remainingSubs } = newData[activeCategory];
           
-          // 刪除小分類後，該大分類因為內容變動，要排到最前
-          const newCatContent = { ...newData[activeCategory] };
-          delete newData[activeCategory];
-          newData = { [activeCategory]: newCatContent, ...newData };
+          // 2. 將修改過的大分類排到最前面
+          const { [activeCategory]: currentCat, ...remainingCats } = newData;
+          newData = { [activeCategory]: remainingSubs, ...remainingCats };
           
-          setActiveSubcategory(Object.keys(newData[activeCategory])[0] || '');
-      } else if (type === 'tab') {
-          delete newData[activeCategory][activeSubcategory][name];
+          setActiveSubcategory(Object.keys(remainingSubs)[0] || '');
+      } 
+      else if (type === 'tab') {
+          // 1. 從小分類中排除該清單
+          const { [name]: deletedTab, ...remainingTabs } = newData[activeCategory][activeSubcategory];
           
-          // 1. 小分類排最前
-          const newSubContent = { ...newData[activeCategory][activeSubcategory] };
+          // 2. 將修改過的小分類排到該大分類的最前面
+          const { [activeSubcategory]: currentSub, ...remainingSubs } = newData[activeCategory];
+          const newCatContent = { [activeSubcategory]: remainingTabs, ...remainingSubs };
           
-          // 2. 大分類排最前
-          const tempCatContent = { ...newData[activeCategory] };
-          delete tempCatContent[activeSubcategory];
-          const newCatContent = { [activeSubcategory]: newSubContent, ...tempCatContent };
-          
-          delete newData[activeCategory];
-          newData = { [activeCategory]: newCatContent, ...newData };
+          // 3. 將修改過的大分類排到根目錄的最前面
+          const { [activeCategory]: currentCat, ...remainingCats } = newData;
+          newData = { [activeCategory]: newCatContent, ...remainingCats };
 
-          setActiveTab(Object.keys(newData[activeCategory][activeSubcategory])[0] || '');
+          setActiveTab(Object.keys(remainingTabs)[0] || '');
       }
       updateData(newData);
   };
