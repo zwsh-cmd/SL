@@ -145,78 +145,53 @@ const UniversalSelector = () => {
             const rawData = docSnap.data().categories || {};
             let cleanData = {};
             
-            // --- 嚴格資料重建邏輯 ---
-            // 目標：確保結構絕對是 Group(Object) -> Category(Array) -> Items(Strings)
-            
-            // 1. 建立一個「資源回收筒」來放那些結構錯誤的資料，避免它們變成大分類
-            let recoveredGroup = {}; 
-            let hasRecovered = false;
-
-            // 2. 檢查最外層 (原本應該是 Group)
+            // --- 嚴格過濾邏輯 (只保留正確的結構) ---
             if (typeof rawData === 'object' && !Array.isArray(rawData) && rawData !== null) {
-                Object.keys(rawData).forEach(key => {
-                    const val = rawData[key];
-
-                    // 情況 A: 它是正確的大分類 (是一個物件，且不是陣列)
-                    if (typeof val === 'object' && !Array.isArray(val) && val !== null) {
-                        cleanData[key] = {}; // 建立正確的大分類
-                        // 檢查裡面的小分類
-                        Object.keys(val).forEach(subKey => {
-                            const subVal = val[subKey];
-                            if (Array.isArray(subVal)) {
-                                // 這是正確的小分類 (陣列)，保留它
-                                cleanData[key][subKey] = subVal;
-                            } else {
-                                // 錯誤：大分類裡面有怪東西 (不是陣列)，忽略或轉為空陣列
+                Object.keys(rawData).forEach(groupKey => {
+                    const groupVal = rawData[groupKey];
+                    // 只有當這個「大分類」真的是一個物件(容器)，且不是陣列時，才保留它
+                    if (typeof groupVal === 'object' && !Array.isArray(groupVal) && groupVal !== null) {
+                        cleanData[groupKey] = {}; // 建立空的大分類容器
+                        
+                        // 接著檢查裡面的小分類
+                        Object.keys(groupVal).forEach(catKey => {
+                            const catVal = groupVal[catKey];
+                            // 只有當這個「小分類」真的是一個陣列(清單)時，才保留它
+                            if (Array.isArray(catVal)) {
+                                cleanData[groupKey][catKey] = catVal;
                             }
                         });
                     }
-                    // 情況 B: 它是小分類 (陣列) 卻跑到了最外層 -> 移入「資源回收/未分類」群組
-                    else if (Array.isArray(val)) {
-                        recoveredGroup[key] = val;
-                        hasRecovered = true;
-                    }
-                    // 情況 C: 它是項目 (字串) 卻跑到了最外層 -> 移入「資源回收/未分類」群組的「雜項」
-                    else if (typeof val === 'string' || typeof val === 'number') {
-                        if (!recoveredGroup['雜項']) recoveredGroup['雜項'] = [];
-                        recoveredGroup['雜項'].push(String(val));
-                        hasRecovered = true;
-                    }
+                    // 如果 groupVal 是字串、數字或陣列(舊資料)，直接丟棄，不顯示
                 });
-            } else if (Array.isArray(rawData)) {
-                // 整個資料庫結構都是錯的 (舊版陣列資料)
-                recoveredGroup['舊資料備份'] = rawData;
-                hasRecovered = true;
             }
-
-            // 如果有回收的資料，將它們放入一個專門的群組，而不是散落在外
-            if (hasRecovered) {
-                cleanData['未分類群組'] = recoveredGroup;
+            
+            // 如果過濾完發現什麼都不剩 (或是資料庫原本就是壞的)，就載入預設值
+            if (Object.keys(cleanData).length === 0) {
+                cleanData = DEFAULT_CATEGORIES;
             }
-
-            // 若完全沒資料，使用預設值
-            if (Object.keys(cleanData).length === 0) cleanData = DEFAULT_CATEGORIES;
-            // --- 重建結束 ---
-
+            
             setAllData(cleanData);
             
-            // 智慧設定預設選中項
+            // 設定預設選中項
             const groups = Object.keys(cleanData);
             if (groups.length > 0) {
-               // 優先保持原本選中的 Group，若不存在則選第一個
                setActiveGroup(prevGroup => {
+                   // 如果原本選中的群組還在(沒被過濾掉)，就維持；否則選第一個
                    const nextGroup = cleanData[prevGroup] ? prevGroup : groups[0];
                    
-                   // 接著設定 Tab (小分類)
                    const cats = Object.keys(cleanData[nextGroup] || {});
-                   if (cats.length > 0) {
-                       setActiveTab(prevTab => (cleanData[nextGroup][prevTab]) ? prevTab : cats[0]);
-                   } else {
-                       setActiveTab('');
-                   }
+                   setActiveTab(prevTab => {
+                       // 如果原本選中的小分類還在，就維持；否則選第一個
+                       return (cleanData[nextGroup][prevTab]) ? prevTab : (cats[0] || '');
+                   });
                    return nextGroup;
                });
+            } else {
+                setActiveGroup('');
+                setActiveTab('');
             }
+
           } else {
             saveDataToCloud(DEFAULT_CATEGORIES, currentUser.uid);
           }
