@@ -25,8 +25,33 @@ const { useState, useEffect, useRef } = React;
 const icons = window.lucide.icons;
 
 const Icon = ({ name, className }) => {
-  const LucideIcon = icons[name];
-  return LucideIcon ? <LucideIcon className={className} /> : null;
+  // 1. 取得圖示的數據
+  const iconData = icons[name];
+  
+  if (!iconData) return null;
+
+  // 2. 設定 SVG 的預設外觀
+  const defaultAttrs = {
+    xmlns: "http://www.w3.org/2000/svg",
+    width: 24,
+    height: 24,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round",
+    strokeLinejoin: "round",
+  };
+
+  // 3. 手動建立 SVG 標籤，把資料填進去
+  return React.createElement(
+    'svg',
+    { ...defaultAttrs, className: className },
+    iconData.map((child, index) => {
+      const [tag, attrs] = child;
+      return React.createElement(tag, { ...attrs, key: index });
+    })
+  );
 };
 
 const UniversalSelector = () => {
