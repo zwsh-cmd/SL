@@ -88,6 +88,12 @@ const UniversalSelector = () => {
   const [targetCatForAdd, setTargetCatForAdd] = useState('');
   const [targetSubForAdd, setTargetSubForAdd] = useState('');
 
+  // 使用 Ref 追蹤當前選擇，確保 onSnapshot 更新時不會重置選擇
+  const activeSelectionRef = useRef({ cat: '', sub: '', tab: '' });
+  useEffect(() => {
+    activeSelectionRef.current = { cat: activeCategory, sub: activeSubcategory, tab: activeTab };
+  }, [activeCategory, activeSubcategory, activeTab]);
+
   const [currentKing, setCurrentKing] = useState(null);
   const [challenger, setChallenger] = useState(null);
   const [queue, setQueue] = useState([]);
@@ -203,18 +209,32 @@ const UniversalSelector = () => {
             
             setAllData(loadedData);
             
-            // 初始化選擇
+            // 初始化或更新選擇 (使用 Ref 取得最新狀態，防止跳轉)
+            const currentSel = activeSelectionRef.current;
             const cats = Object.keys(loadedData);
-            const firstCat = cats[0] || '';
-            setActiveCategory(prev => loadedData[prev] ? prev : firstCat);
             
-            const subs = firstCat ? Object.keys(loadedData[firstCat] || {}) : [];
-            const firstSub = subs[0] || '';
-            setActiveSubcategory(firstSub);
-            
-            const tabs = (firstCat && firstSub) ? Object.keys(loadedData[firstCat][firstSub] || {}) : [];
-            const firstTab = tabs[0] || '';
-            setActiveTab(firstTab);
+            // 1. 決定 Category
+            let newCat = currentSel.cat;
+            if (!loadedData[newCat]) {
+                newCat = cats[0] || '';
+            }
+            setActiveCategory(newCat);
+
+            // 2. 決定 Subcategory
+            const subs = newCat ? Object.keys(loadedData[newCat] || {}) : [];
+            let newSub = currentSel.sub;
+            if (!loadedData[newCat] || !loadedData[newCat][newSub]) {
+                newSub = subs[0] || '';
+            }
+            setActiveSubcategory(newSub);
+
+            // 3. 決定 Tab
+            const tabs = (newCat && newSub) ? Object.keys(loadedData[newCat][newSub] || {}) : [];
+            let newTab = currentSel.tab;
+            if (!loadedData[newCat] || !loadedData[newCat][newSub] || !loadedData[newCat][newSub][newTab]) {
+                newTab = tabs[0] || '';
+            }
+            setActiveTab(newTab);
 
           } else {
             saveDataToCloud(DEFAULT_DATA, currentUser.uid);
