@@ -98,8 +98,12 @@ const UniversalSelector = () => {
   const [challenger, setChallenger] = useState(null);
   const [queue, setQueue] = useState([]);
 
-  // --- 移動功能相關狀態 ---
-  const [moveConfig, setMoveConfig] = useState(null); // { type: 'subcategory'|'tab', name: string, currentCat: string, currentSub: string }
+  // --- 長按動作功能相關狀態 ---
+  const [actionMenu, setActionMenu] = useState(null); // { type, name, currentCat, currentSub }
+  const [renameConfig, setRenameConfig] = useState(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const [moveConfig, setMoveConfig] = useState(null); 
   const [moveToCat, setMoveToCat] = useState('');
   const [moveToSub, setMoveToSub] = useState('');
   
@@ -113,10 +117,9 @@ const UniversalSelector = () => {
         longPressTimer.current = setTimeout(() => {
             ignoreClick.current = true; // 標記為長按，讓 onClick 忽略
             if (navigator.vibrate) navigator.vibrate(50);
-            setMoveConfig({ type, name, currentCat, currentSub });
-            setMoveToCat('');
-            setMoveToSub('');
-        }, 800); // 0.8秒視為長按
+            // 開啟動作選單
+            setActionMenu({ type, name, currentCat, currentSub });
+        }, 800); 
     };
     const end = () => {
         if (longPressTimer.current) clearTimeout(longPressTimer.current);
@@ -128,6 +131,42 @@ const UniversalSelector = () => {
     };
   };
 
+  const executeRename = () => {
+     const val = renameValue.trim();
+     if (!renameConfig || !val) return;
+     const { type, name, currentCat, currentSub } = renameConfig;
+     if (val === name) { setRenameConfig(null); return; }
+     
+     const newData = JSON.parse(JSON.stringify(allData));
+     
+     // 檢查名稱是否重複並執行更名
+     if (type === 'category') {
+         if (newData[val]) { alert('名稱已存在'); return; }
+         newData[val] = newData[name];
+         delete newData[name];
+         // 更新當前選取狀態，避免跳掉
+         if (activeCategory === name) setActiveCategory(val);
+         if (targetCatForAdd === name) setTargetCatForAdd(val);
+     } 
+     else if (type === 'subcategory') {
+         if (newData[currentCat][val]) { alert('名稱已存在'); return; }
+         newData[currentCat][val] = newData[currentCat][name];
+         delete newData[currentCat][name];
+         if (activeSubcategory === name) setActiveSubcategory(val);
+         if (targetSubForAdd === name) setTargetSubForAdd(val);
+     }
+     else if (type === 'tab') {
+         if (newData[currentCat][currentSub][val]) { alert('名稱已存在'); return; }
+         newData[currentCat][currentSub][val] = newData[currentCat][currentSub][name];
+         delete newData[currentCat][currentSub][name];
+         if (activeTab === name) setActiveTab(val);
+     }
+
+     updateData(newData);
+     setRenameConfig(null);
+     setRenameValue('');
+  };
+
   const executeMove = () => {
     if (!moveConfig) return;
     const newData = JSON.parse(JSON.stringify(allData));
@@ -135,29 +174,18 @@ const UniversalSelector = () => {
 
     if (type === 'subcategory') {
         if (!moveToCat) return;
-        // 1. 取出資料
         const dataToMove = newData[currentCat][name];
-        // 2. 刪除舊的
         delete newData[currentCat][name];
-        // 3. 移入新的 (若目標不存在則建立)
         if (!newData[moveToCat]) newData[moveToCat] = {};
-        // 若名稱衝突，直接覆蓋 (或是您可以改成自動改名，這裡採覆蓋策略)
         newData[moveToCat][name] = dataToMove;
-        
-        // UI 重置
         if (activeSubcategory === name) setActiveSubcategory('');
     } 
     else if (type === 'tab') {
         if (!moveToCat || !moveToSub) return;
-        // 1. 取出資料
         const dataToMove = newData[currentCat][currentSub][name];
-        // 2. 刪除舊的
         delete newData[currentCat][currentSub][name];
-        // 3. 移入新的
         if (!newData[moveToCat][moveToSub]) newData[moveToCat][moveToSub] = {};
         newData[moveToCat][moveToSub][name] = dataToMove;
-
-        // UI 重置
         if (activeTab === name) setActiveTab('');
     }
 
@@ -474,7 +502,9 @@ const UniversalSelector = () => {
         <div className="bg-slate-800 p-2 flex overflow-x-auto gap-2 no-scrollbar border-b border-slate-700">
            {Object.keys(allData).map(cat => (
              <button key={cat} 
+                {...bindLongPress('category', cat, null)}
                 onClick={()=>{
+                    if (ignoreClick.current) return; // 長按時忽略點擊
                     setActiveCategory(cat); 
                     const subs = Object.keys(allData[cat]||{}); 
                     setActiveSubcategory(subs[0]||'');
@@ -559,7 +589,58 @@ const UniversalSelector = () => {
              </div>
            )}
 
-           {/* --- 移動功能的選單 (Modal) --- */}
+           {/* --- 1. 動作選擇選單 (長按後出現) --- */}
+           {actionMenu && (
+             <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setActionMenu(null)}>
+                <div className="bg-white rounded-xl w-full max-w-xs overflow-hidden shadow-2xl p-2 flex flex-col gap-2" onClick={e=>e.stopPropagation()}>
+                    <div className="p-2 text-center border-b font-bold text-slate-700">對「{actionMenu.name}」進行操作</div>
+                    
+                    <button onClick={()=>{
+                        setRenameConfig(actionMenu);
+                        setRenameValue(actionMenu.name);
+                        setActionMenu(null);
+                    }} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-800 font-medium">
+                        重新命名
+                    </button>
+
+                    {/* 只有 小分類 和 清單 可以移動 */}
+                    {actionMenu.type !== 'category' && (
+                        <button onClick={()=>{
+                            setMoveConfig(actionMenu);
+                            setMoveToCat('');
+                            setMoveToSub('');
+                            setActionMenu(null);
+                        }} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-800 font-medium">
+                            移動位置
+                        </button>
+                    )}
+                    
+                    <button onClick={()=>setActionMenu(null)} className="p-3 text-red-400 hover:bg-red-50 rounded-lg">取消</button>
+                </div>
+             </div>
+           )}
+
+           {/* --- 2. 重新命名視窗 --- */}
+           {renameConfig && (
+             <div className="absolute inset-0 bg-black/90 z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white rounded-xl w-full max-w-sm p-4 shadow-2xl">
+                    <div className="font-bold text-lg mb-4">重新命名</div>
+                    <input 
+                        value={renameValue} 
+                        onChange={e=>setRenameValue(e.target.value)}
+                        className="w-full border p-3 rounded-lg text-black mb-4"
+                        autoFocus
+                        placeholder="請輸入新名稱"
+                    />
+                    <div className="flex gap-2">
+                        <button onClick={()=>setRenameConfig(null)} className="flex-1 py-2 text-slate-500 bg-slate-100 rounded-lg">取消</button>
+                        <button onClick={executeRename} className="flex-1 py-2 bg-teal-500 text-white rounded-lg font-bold">確定</button>
+                    </div>
+                </div>
+             </div>
+           )}
+
+           {/* --- 3. 移動功能的選單 --- */}
            {moveConfig && (
              <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
                 <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl max-h-[80vh]">
