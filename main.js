@@ -91,11 +91,32 @@ const UniversalSelector = () => {
             const data = docSnap.data();
             let loadedData = DEFAULT_DATA;
             
-            // 優先檢查是否有 'categories' (多分類資料)
-            if (data.categories && typeof data.categories === 'object' && !Array.isArray(data.categories)) {
-                loadedData = data.categories;
+            // 1. 取得原始資料
+            const raw = data.categories;
+            
+            // 2. 智慧資料清洗與遷移 (Flatten Logic)
+            if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+                let cleanData = {};
+                Object.keys(raw).forEach(key => {
+                    const val = raw[key];
+                    if (Array.isArray(val)) {
+                        // 情況A: 正常的分類 (Key -> Array)
+                        cleanData[key] = val;
+                    } else if (typeof val === 'object' && val !== null) {
+                        // 情況B: 舊版的大分類 (Group -> Cat -> Array)，執行攤平
+                        Object.keys(val).forEach(subKey => {
+                           if (Array.isArray(val[subKey])) {
+                               cleanData[subKey] = val[subKey];
+                           }
+                        });
+                    }
+                });
+                
+                if (Object.keys(cleanData).length > 0) {
+                    loadedData = cleanData;
+                }
             } 
-            // 如果只有 'items' (單一清單舊資料)，自動遷移到「預設清單」分類
+            // 3. 相容單一清單舊資料
             else if (data.items && Array.isArray(data.items)) {
                 loadedData = { '預設清單': data.items };
             }
@@ -146,7 +167,8 @@ const UniversalSelector = () => {
     if (confirm("確定要登出嗎？")) { await signOut(auth); setAppState('input'); }
   };
 
-  const currentList = allData[activeTab] || [];
+  // 防呆：確認是陣列才回傳，否則回傳空陣列，防止白屏
+  const currentList = Array.isArray(allData[activeTab]) ? allData[activeTab] : [];
 
   const addItem = () => {
     if (!inputValue.trim()) return;
