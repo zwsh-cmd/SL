@@ -142,22 +142,51 @@ const UniversalSelector = () => {
         const unsubDoc = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
           setLoading(false);
           if (docSnap.exists()) {
-            let data = docSnap.data().categories;
-            // 資料遷移邏輯：如果讀取到舊的扁平資料（值是陣列），則包裹進「未分類」群組
-            const firstKey = Object.keys(data || {})[0];
-            if (firstKey && Array.isArray(data[firstKey])) {
-              data = { '未分類': data };
+            let data = docSnap.data().categories || {};
+            
+            // --- 資料結構強力修復區 ---
+            // 1. 如果最外層是陣列 (舊資料)，包進「未分類」
+            if (Array.isArray(data)) { 
+                data = { '未分類': { '預設清單': data } };
+            } else {
+                // 2. 遍歷檢查每個大分類
+                Object.keys(data).forEach(groupKey => {
+                    // 如果大分類的值竟然是陣列 (格式錯誤)，把它包成物件
+                    if (Array.isArray(data[groupKey])) {
+                        data[groupKey] = { '預設清單': data[groupKey] };
+                    } 
+                    // 如果大分類的值不是物件 (甚至是字串)，重置為空物件
+                    else if (typeof data[groupKey] !== 'object' || data[groupKey] === null) {
+                        data[groupKey] = {};
+                    }
+
+                    // 3. 遍歷檢查每個小分類
+                    Object.keys(data[groupKey]).forEach(catKey => {
+                        // 如果小分類的值不是陣列 (格式錯誤)，重置為空陣列
+                        if (!Array.isArray(data[groupKey][catKey])) {
+                            data[groupKey][catKey] = [];
+                        }
+                    });
+                });
             }
-            if (data) {
-              setAllData(data);
-              // 確保選中有效的群組與分類
-              const groups = Object.keys(data);
-              if (groups.length > 0) {
-                 const firstGroup = groups[0];
-                 setActiveGroup(prev => data[prev] ? prev : firstGroup);
-                 const cats = Object.keys(data[firstGroup] || {});
-                 if (cats.length > 0) setActiveTab(prev => (data[prev] && data[prev][prev]) ? prev : cats[0]);
-              }
+            // --- 修復結束 ---
+
+            setAllData(data);
+            
+            // 智慧設定預設選中項 (防止選中不存在的項目導致白屏)
+            const groups = Object.keys(data);
+            if (groups.length > 0) {
+               setActiveGroup(prevGroup => {
+                   const targetGroup = data[prevGroup] ? prevGroup : groups[0];
+                   // 設定完 Group 後，接著設定 Tab
+                   const cats = Object.keys(data[targetGroup] || {});
+                   if (cats.length > 0) {
+                       setActiveTab(prevTab => (data[targetGroup][prevTab]) ? prevTab : cats[0]);
+                   } else {
+                       setActiveTab('');
+                   }
+                   return targetGroup;
+               });
             }
           } else {
             saveDataToCloud(DEFAULT_CATEGORIES, currentUser.uid);
@@ -200,7 +229,9 @@ const UniversalSelector = () => {
   };
 
   const currentGroupData = allData[activeGroup] || {};
-  const currentList = currentGroupData[activeTab] || [];
+  // 強制確認 currentList 必須是陣列，否則給空陣列 (防止白屏)
+  const rawList = currentGroupData[activeTab];
+  const currentList = Array.isArray(rawList) ? rawList : [];
 
   const addItem = () => {
     if (!inputValue.trim()) return;
