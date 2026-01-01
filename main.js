@@ -300,16 +300,16 @@ const UniversalSelector = () => {
 
     if (addingType === 'category') {
         if (!newData[name]) {
-            newData[name] = { '新小分類': { '新清單': [] } };
+            newData[name] = {}; // 1. 建立空的大分類
             setActiveCategory(name);
-            setActiveSubcategory('新小分類');
-            setActiveTab('新清單');
+            setActiveSubcategory(''); // 不預設選取，介面會只顯示「+」
+            setActiveTab(''); 
         }
     } else if (addingType === 'subcategory') {
         if (activeCategory && !newData[activeCategory][name]) {
-            newData[activeCategory][name] = { '新清單': [] };
+            newData[activeCategory][name] = {}; // 2. 建立空的小分類
             setActiveSubcategory(name);
-            setActiveTab('新清單');
+            setActiveTab(''); // 不預設選取，介面會只顯示「+」
         }
     } else if (addingType === 'tab') {
         // 使用選定的分類，而非預設 active
