@@ -137,14 +137,13 @@ const UniversalSelector = () => {
      const { type, name, currentCat, currentSub } = renameConfig;
      if (val === name) { setRenameConfig(null); return; }
      
-     // 使用 let 因為我們可能會重新賦值 newData (針對大分類)
      let newData = JSON.parse(JSON.stringify(allData));
      
      if (type === 'category') {
          if (newData[val]) { alert('名稱已存在'); return; }
          const content = newData[name];
          delete newData[name];
-         // 將新名稱放在物件最前面
+         // 1. 大分類排最前
          newData = { [val]: content, ...newData };
          
          if (activeCategory === name) setActiveCategory(val);
@@ -154,8 +153,12 @@ const UniversalSelector = () => {
          if (newData[currentCat][val]) { alert('名稱已存在'); return; }
          const content = newData[currentCat][name];
          delete newData[currentCat][name];
-         // 將新小分類放在該大分類的最前面
-         newData[currentCat] = { [val]: content, ...newData[currentCat] };
+         
+         // 1. 小分類排最前
+         const newCatContent = { [val]: content, ...newData[currentCat] };
+         // 2. 大分類排最前
+         delete newData[currentCat];
+         newData = { [currentCat]: newCatContent, ...newData };
 
          if (activeSubcategory === name) setActiveSubcategory(val);
          if (targetSubForAdd === name) setTargetSubForAdd(val);
@@ -164,8 +167,18 @@ const UniversalSelector = () => {
          if (newData[currentCat][currentSub][val]) { alert('名稱已存在'); return; }
          const content = newData[currentCat][currentSub][name];
          delete newData[currentCat][currentSub][name];
-         // 將新清單放在該小分類的最前面
-         newData[currentCat][currentSub] = { [val]: content, ...newData[currentCat][currentSub] };
+         
+         // 1. 清單排最前
+         const newSubContent = { [val]: content, ...newData[currentCat][currentSub] };
+         
+         // 2. 小分類排最前 (先取出原本的，重組順序)
+         const tempCatContent = { ...newData[currentCat] };
+         delete tempCatContent[currentSub];
+         const newCatContent = { [currentSub]: newSubContent, ...tempCatContent };
+         
+         // 3. 大分類排最前
+         delete newData[currentCat];
+         newData = { [currentCat]: newCatContent, ...newData };
 
          if (activeTab === name) setActiveTab(val);
      }
@@ -177,7 +190,7 @@ const UniversalSelector = () => {
 
   const executeMove = () => {
     if (!moveConfig) return;
-    const newData = JSON.parse(JSON.stringify(allData));
+    let newData = JSON.parse(JSON.stringify(allData));
     const { type, name, currentCat, currentSub } = moveConfig;
 
     if (type === 'subcategory') {
@@ -186,8 +199,12 @@ const UniversalSelector = () => {
         delete newData[currentCat][name];
         if (!newData[moveToCat]) newData[moveToCat] = {};
         
-        // 將移動的小分類排在目標大分類的最前面
-        newData[moveToCat] = { [name]: dataToMove, ...newData[moveToCat] };
+        // 1. 小分類排入目標最前
+        const newTargetCatContent = { [name]: dataToMove, ...newData[moveToCat] };
+        
+        // 2. 目標大分類排最前
+        delete newData[moveToCat];
+        newData = { [moveToCat]: newTargetCatContent, ...newData };
         
         if (activeSubcategory === name) setActiveSubcategory('');
     } 
@@ -195,10 +212,20 @@ const UniversalSelector = () => {
         if (!moveToCat || !moveToSub) return;
         const dataToMove = newData[currentCat][currentSub][name];
         delete newData[currentCat][currentSub][name];
+        
         if (!newData[moveToCat][moveToSub]) newData[moveToCat][moveToSub] = {};
         
-        // 將移動的清單排在目標小分類的最前面
-        newData[moveToCat][moveToSub] = { [name]: dataToMove, ...newData[moveToCat][moveToSub] };
+        // 1. 清單排入目標小分類最前
+        const newTargetSubContent = { [name]: dataToMove, ...newData[moveToCat][moveToSub] };
+        
+        // 2. 目標小分類排最前
+        const tempTargetCatContent = { ...newData[moveToCat] };
+        delete tempTargetCatContent[moveToSub];
+        const newTargetCatContent = { [moveToSub]: newTargetSubContent, ...tempTargetCatContent };
+        
+        // 3. 目標大分類排最前
+        delete newData[moveToCat];
+        newData = { [moveToCat]: newTargetCatContent, ...newData };
         
         if (activeTab === name) setActiveTab('');
     }
@@ -338,12 +365,11 @@ const UniversalSelector = () => {
     const name = newName.trim();
     if (!name) return;
 
-    // 使用 let 以便重新賦值
     let newData = JSON.parse(JSON.stringify(allData));
 
     if (addingType === 'category') {
         if (!newData[name]) {
-            // 新增空的大分類，並排在最前面
+            // 1. 大分類排最前
             newData = { [name]: {}, ...newData };
             setActiveCategory(name);
             setActiveSubcategory('');
@@ -351,15 +377,28 @@ const UniversalSelector = () => {
         }
     } else if (addingType === 'subcategory') {
         if (activeCategory && !newData[activeCategory][name]) {
-            // 新增空的小分類，並排在該大分類的最前面
-            newData[activeCategory] = { [name]: {}, ...newData[activeCategory] };
+            // 1. 小分類排最前
+            const newCatContent = { [name]: {}, ...newData[activeCategory] };
+            // 2. 大分類排最前
+            delete newData[activeCategory];
+            newData = { [activeCategory]: newCatContent, ...newData };
+            
             setActiveSubcategory(name);
             setActiveTab('');
         }
     } else if (addingType === 'tab') {
         if (targetCatForAdd && targetSubForAdd && !newData[targetCatForAdd][targetSubForAdd][name]) {
-            // 新增空的清單，並排在該小分類的最前面
-            newData[targetCatForAdd][targetSubForAdd] = { [name]: [], ...newData[targetCatForAdd][targetSubForAdd] };
+            // 1. 清單排最前
+            const newSubContent = { [name]: [], ...newData[targetCatForAdd][targetSubForAdd] };
+            
+            // 2. 小分類排最前
+            const tempCatContent = { ...newData[targetCatForAdd] };
+            delete tempCatContent[targetSubForAdd];
+            const newCatContent = { [targetSubForAdd]: newSubContent, ...tempCatContent };
+            
+            // 3. 大分類排最前
+            delete newData[targetCatForAdd];
+            newData = { [targetCatForAdd]: newCatContent, ...newData };
             
             setActiveCategory(targetCatForAdd);
             setActiveSubcategory(targetSubForAdd);
