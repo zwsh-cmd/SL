@@ -1,7 +1,7 @@
 // --- 1. Firebase 設定區 ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, onSnapshot, setDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, doc, onSnapshot, setDoc, updateDoc, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 // 🔴 🔴 🔴 重要提醒：請去 Firebase Console 申請後，回來替換這裡的內容 🔴 🔴 🔴
 const firebaseConfig = {
@@ -146,11 +146,20 @@ const UniversalSelector = () => {
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // 儲存到 categories 欄位
-        await setDoc(doc(db, 'users', uid), { categories: newData, lastUpdated: new Date() }, { merge: true });
+        const userRef = doc(db, 'users', uid);
+        try {
+          // 嘗試使用 updateDoc 來「替換」categories 欄位 (這樣才能真的刪除分類)
+          await updateDoc(userRef, { categories: newData, lastUpdated: new Date() });
+        } catch (err) {
+          // 如果文件不存在 (例如新使用者)，則使用 setDoc 建立
+          await setDoc(userRef, { categories: newData, lastUpdated: new Date() });
+        }
         setSyncStatus('saved');
         setTimeout(() => setSyncStatus('idle'), 2000);
-      } catch (err) { setSyncStatus('error'); }
+      } catch (err) { 
+        console.error("Save failed:", err);
+        setSyncStatus('error'); 
+      }
     }, 1000);
   };
 
