@@ -88,6 +88,17 @@ const UniversalSelector = () => {
   const [targetCatForAdd, setTargetCatForAdd] = useState('');
   const [targetSubForAdd, setTargetSubForAdd] = useState('');
 
+  // 修改手機狀態列顏色 (配合 APP 標題 bg-slate-800 #1e293b)
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = "theme-color";
+        document.head.appendChild(meta);
+    }
+    meta.content = "#1e293b";
+  }, []);
+
   // 使用 Ref 追蹤當前選擇，確保 onSnapshot 更新時不會重置選擇
   const activeSelectionRef = useRef({ cat: '', sub: '', tab: '' });
   useEffect(() => {
@@ -498,8 +509,9 @@ const UniversalSelector = () => {
              </div>
         )}
 
-        {/* 第一層：Category (大分類) */}
-        <div className="bg-slate-800 p-2 flex overflow-x-auto gap-2 no-scrollbar border-b border-slate-700">
+        {/* 第一層：Category (大分類) */}`
+        <div className="bg-slate-800 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-slate-700">
+           <div className="text-slate-400 text-xs font-bold shrink-0 px-1">大分類</div>
            {Object.keys(allData).map(cat => (
              <button key={cat} 
                 {...bindLongPress('category', cat, null)}
@@ -520,8 +532,9 @@ const UniversalSelector = () => {
            <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-slate-700 text-slate-400 rounded-lg hover:bg-slate-600 border border-slate-600"><Icon name="Plus" className="w-4 h-4"/></button>
         </div>
 
-        {/* 第二層：Subcategory (小分類) */}
-        <div className="bg-slate-700 p-2 flex overflow-x-auto gap-2 no-scrollbar border-b border-slate-600 shadow-inner">
+        {/* 第二層：Subcategory (小分類) */}`
+        <div className="bg-slate-700 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-slate-600 shadow-inner">
+           <div className="text-slate-300 text-xs font-bold shrink-0 px-1">次分類</div>
            {activeCategory && allData[activeCategory] && Object.keys(allData[activeCategory]).map(sub => (
              <button key={sub} 
                 {...bindLongPress('subcategory', sub, activeCategory)}
