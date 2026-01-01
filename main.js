@@ -55,21 +55,34 @@ const Icon = ({ name, className }) => {
 };
 
 const UniversalSelector = () => {
+  // 1. 改為階層式預設資料
   const DEFAULT_CATEGORIES = {
-    '中餐': ['麥當勞', '巷口麵店', '排骨飯', '便利商店'],
-    '晚餐': ['火鍋', '牛排', '自己煮', '鹹水雞'],
-    '寫作題材': ['回憶錄', '科幻短篇', '生活觀察', '讀書心得']
+    '餐飲選擇': {
+      '中餐': ['麥當勞', '巷口麵店', '排骨飯', '便利商店'],
+      '晚餐': ['火鍋', '牛排', '自己煮', '鹹水雞']
+    },
+    '創作靈感': {
+      '寫作題材': ['回憶錄', '科幻短篇', '生活觀察'],
+      '繪畫風格': ['水彩', '素描', '油畫']
+    }
   };
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('idle');
   const [allData, setAllData] = useState(DEFAULT_CATEGORIES);
+  
+  // 2. 新增 activeGroup 狀態
+  const [activeGroup, setActiveGroup] = useState('餐飲選擇');
   const [activeTab, setActiveTab] = useState('中餐');
+  
   const [appState, setAppState] = useState('input');
   const [inputValue, setInputValue] = useState('');
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  
+  // 3. 新增控制群組/分類新增模式的狀態
+  const [addingMode, setAddingMode] = useState(null); // null, 'group', 'category'
   const [newCategoryName, setNewCategoryName] = useState('');
+  
   const [currentKing, setCurrentKing] = useState(null);
   const [challenger, setChallenger] = useState(null);
   const [queue, setQueue] = useState([]);
@@ -82,8 +95,23 @@ const UniversalSelector = () => {
         const unsubDoc = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
           setLoading(false);
           if (docSnap.exists()) {
-            const data = docSnap.data().categories;
-            if (data) setAllData(data);
+            let data = docSnap.data().categories;
+            // 資料遷移邏輯：如果讀取到舊的扁平資料（值是陣列），則包裹進「未分類」群組
+            const firstKey = Object.keys(data || {})[0];
+            if (firstKey && Array.isArray(data[firstKey])) {
+              data = { '未分類': data };
+            }
+            if (data) {
+              setAllData(data);
+              // 確保選中有效的群組與分類
+              const groups = Object.keys(data);
+              if (groups.length > 0) {
+                 const firstGroup = groups[0];
+                 setActiveGroup(prev => data[prev] ? prev : firstGroup);
+                 const cats = Object.keys(data[firstGroup] || {});
+                 if (cats.length > 0) setActiveTab(prev => (data[prev] && data[prev][prev]) ? prev : cats[0]);
+              }
+            }
           } else {
             saveDataToCloud(DEFAULT_CATEGORIES, currentUser.uid);
           }
@@ -124,28 +152,53 @@ const UniversalSelector = () => {
     if (confirm("確定要登出嗎？")) { await signOut(auth); setAppState('input'); }
   };
 
-  const currentList = allData[activeTab] || [];
+  const currentGroupData = allData[activeGroup] || {};
+  const currentList = currentGroupData[activeTab] || [];
+
   const addItem = () => {
     if (!inputValue.trim()) return;
-    updateData({ ...allData, [activeTab]: [...(allData[activeTab] || []), inputValue.trim()] });
+    const newGroupData = { ...currentGroupData, [activeTab]: [...currentList, inputValue.trim()] };
+    updateData({ ...allData, [activeGroup]: newGroupData });
     setInputValue('');
   };
-  const removeItem = (idx) => updateData({ ...allData, [activeTab]: allData[activeTab].filter((_, i) => i !== idx) });
-  const clearCurrentList = () => confirm(`清空「${activeTab}」？`) && updateData({ ...allData, [activeTab]: [] });
-  const addCategory = () => {
-    const name = newCategoryName.trim();
-    if (!name || allData[name]) return;
-    updateData({ ...allData, [name]: [] });
-    setActiveTab(name);
-    setNewCategoryName('');
-    setIsAddingCategory(false);
+
+  const removeItem = (idx) => {
+    const newGroupData = { ...currentGroupData, [activeTab]: currentList.filter((_, i) => i !== idx) };
+    updateData({ ...allData, [activeGroup]: newGroupData });
   };
-  const deleteCategory = (name) => {
-    if (Object.keys(allData).length <= 1 || !confirm(`刪除「${name}」？`)) return;
+
+  const handleAddSubmit = () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    
+    if (addingMode === 'group') {
+       if (allData[name]) return;
+       updateData({ ...allData, [name]: {} });
+       setActiveGroup(name);
+    } else if (addingMode === 'category') {
+       if (currentGroupData[name]) return;
+       const newGroupData = { ...currentGroupData, [name]: [] };
+       updateData({ ...allData, [activeGroup]: newGroupData });
+       setActiveTab(name);
+    }
+    setNewCategoryName('');
+    setAddingMode(null);
+  };
+
+  const deleteGroup = (groupName) => {
+    if (!confirm(`刪除大分類「${groupName}」及其下所有內容？`)) return;
     const newData = { ...allData };
-    delete newData[name];
+    delete newData[groupName];
     updateData(newData);
-    if (activeTab === name) setActiveTab(Object.keys(newData)[0]);
+    if (activeGroup === groupName) setActiveGroup(Object.keys(newData)[0] || '');
+  };
+
+  const deleteCategory = (catName) => {
+    if (!confirm(`刪除小分類「${catName}」？`)) return;
+    const newGroupData = { ...currentGroupData };
+    delete newGroupData[catName];
+    updateData({ ...allData, [activeGroup]: newGroupData });
+    if (activeTab === catName) setActiveTab(Object.keys(newGroupData)[0] || '');
   };
   const startBattle = () => {
     if (currentList.length < 2) return;
@@ -183,16 +236,46 @@ const UniversalSelector = () => {
         <div className="bg-slate-800 p-4 text-white flex justify-between items-center">
            <h1 className="font-bold flex gap-2 items-center"><img src="./icon.png" className="w-8 h-8 object-contain" alt="Logo"/> 雲端選擇器</h1>
            <div className="flex gap-2">
-             <button onClick={()=>setIsAddingCategory(!isAddingCategory)}>{isAddingCategory?<Icon name="X" className="w-5 h-5"/>:<Icon name="Plus" className="w-5 h-5"/>}</button>
              <button onClick={handleLogout}><Icon name="LogOut" className="w-5 h-5 text-red-300"/></button>
            </div>
         </div>
-        {isAddingCategory && <div className="bg-slate-700 p-2 flex gap-2"><input value={newCategoryName} onChange={e=>setNewCategoryName(e.target.value)} className="flex-1 px-2 rounded text-black"/><button onClick={addCategory} className="text-white px-2">新增</button></div>}
-        <div className="bg-slate-700 p-2 flex flex-wrap gap-2">
-           {Object.keys(allData).map(cat => (
-             <button key={cat} onClick={()=>{setActiveTab(cat);setAppState('input')}} className={`px-3 py-1 rounded-full text-sm ${activeTab===cat?'bg-teal-500 text-white':'bg-slate-600 text-slate-300'}`}>{cat}</button>
+        
+        {/* 新增模式輸入框 */}
+        {addingMode && (
+          <div className="bg-slate-900 p-3 flex gap-2 items-center animate-fade-in">
+            <span className="text-white text-sm whitespace-nowrap">{addingMode==='group'?'新增大群組':'新增小分類'}:</span>
+            <input value={newCategoryName} onChange={e=>setNewCategoryName(e.target.value)} className="flex-1 px-2 py-1 rounded text-black text-sm" autoFocus/>
+            <button onClick={handleAddSubmit} className="bg-teal-500 text-white px-3 py-1 rounded text-sm">確定</button>
+            <button onClick={()=>setAddingMode(null)} className="text-slate-400"><Icon name="X" className="w-4 h-4"/></button>
+          </div>
+        )}
+
+        {/* 第一層：大分類 (Groups) */}
+        <div className="bg-slate-800 px-2 py-2 flex overflow-x-auto gap-2 border-b border-slate-700 no-scrollbar">
+           {Object.keys(allData).map(group => (
+             <button key={group} 
+               onClick={()=>{setActiveGroup(group); setActiveTab(Object.keys(allData[group]||{})[0]||''); setAppState('input')}} 
+               onDoubleClick={()=>deleteGroup(group)}
+               className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors ${activeGroup===group?'bg-indigo-500 text-white font-bold':'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>
+               {group}
+             </button>
            ))}
+           <button onClick={()=>setAddingMode('group')} className="px-2 py-1 bg-slate-700 text-slate-400 rounded-lg hover:bg-slate-600"><Icon name="Plus" className="w-4 h-4"/></button>
         </div>
+
+        {/* 第二層：小分類 (Categories) */}
+        <div className="bg-slate-700 p-2 flex flex-wrap gap-2 shadow-inner min-h-[50px] items-center">
+           {activeGroup && Object.keys(allData[activeGroup] || {}).map(cat => (
+             <button key={cat} 
+               onClick={()=>{setActiveTab(cat);setAppState('input')}} 
+               onDoubleClick={()=>deleteCategory(cat)}
+               className={`px-3 py-1 rounded-full text-sm transition-colors ${activeTab===cat?'bg-teal-500 text-white shadow-lg':'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}>
+               {cat}
+             </button>
+           ))}
+           {activeGroup && <button onClick={()=>setAddingMode('category')} className="px-2 py-1 bg-slate-600 text-slate-400 rounded-full hover:bg-slate-500"><Icon name="Plus" className="w-4 h-4"/></button>}
+        </div>
+
         <div className="flex-1 p-4 overflow-y-auto">
            {appState === 'input' && (
              <div className="flex flex-col h-full gap-4">
