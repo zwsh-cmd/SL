@@ -394,6 +394,9 @@ const UniversalSelector = () => {
   };
 
   const removeItem = (idx) => {
+    const itemToDelete = currentList[idx];
+    if (!confirm(`確定要刪除「${itemToDelete}」嗎？`)) return;
+
     const newData = JSON.parse(JSON.stringify(allData));
     newData[activeCategory][activeSubcategory][activeTab] = currentList.filter((_, i) => i !== idx);
     updateData(newData);
