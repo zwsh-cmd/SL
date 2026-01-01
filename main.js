@@ -88,6 +88,73 @@ const UniversalSelector = () => {
   const [challenger, setChallenger] = useState(null);
   const [queue, setQueue] = useState([]);
 
+  // --- 移動功能相關狀態 ---
+  const [moveConfig, setMoveConfig] = useState(null); // { type: 'subcategory'|'tab', name: string, currentCat: string, currentSub: string }
+  const [moveToCat, setMoveToCat] = useState('');
+  const [moveToSub, setMoveToSub] = useState('');
+  
+  const longPressTimer = useRef(null);
+  const ignoreClick = useRef(false); // 用來防止長按後觸發 onClick
+
+  // 長按事件綁定器
+  const bindLongPress = (type, name, currentCat, currentSub = null) => {
+    const start = () => {
+        ignoreClick.current = false;
+        longPressTimer.current = setTimeout(() => {
+            ignoreClick.current = true; // 標記為長按，讓 onClick 忽略
+            if (navigator.vibrate) navigator.vibrate(50);
+            setMoveConfig({ type, name, currentCat, currentSub });
+            setMoveToCat('');
+            setMoveToSub('');
+        }, 800); // 0.8秒視為長按
+    };
+    const end = () => {
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    };
+    return {
+        onMouseDown: start, onTouchStart: start,
+        onMouseUp: end, onMouseLeave: end, onTouchEnd: end,
+        onContextMenu: e => e.preventDefault() // 禁止右鍵選單
+    };
+  };
+
+  const executeMove = () => {
+    if (!moveConfig) return;
+    const newData = JSON.parse(JSON.stringify(allData));
+    const { type, name, currentCat, currentSub } = moveConfig;
+
+    if (type === 'subcategory') {
+        if (!moveToCat) return;
+        // 1. 取出資料
+        const dataToMove = newData[currentCat][name];
+        // 2. 刪除舊的
+        delete newData[currentCat][name];
+        // 3. 移入新的 (若目標不存在則建立)
+        if (!newData[moveToCat]) newData[moveToCat] = {};
+        // 若名稱衝突，直接覆蓋 (或是您可以改成自動改名，這裡採覆蓋策略)
+        newData[moveToCat][name] = dataToMove;
+        
+        // UI 重置
+        if (activeSubcategory === name) setActiveSubcategory('');
+    } 
+    else if (type === 'tab') {
+        if (!moveToCat || !moveToSub) return;
+        // 1. 取出資料
+        const dataToMove = newData[currentCat][currentSub][name];
+        // 2. 刪除舊的
+        delete newData[currentCat][currentSub][name];
+        // 3. 移入新的
+        if (!newData[moveToCat][moveToSub]) newData[moveToCat][moveToSub] = {};
+        newData[moveToCat][moveToSub][name] = dataToMove;
+
+        // UI 重置
+        if (activeTab === name) setActiveTab('');
+    }
+
+    updateData(newData);
+    setMoveConfig(null);
+  };
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -339,7 +406,9 @@ const UniversalSelector = () => {
         <div className="bg-slate-700 p-2 flex overflow-x-auto gap-2 no-scrollbar border-b border-slate-600 shadow-inner">
            {activeCategory && allData[activeCategory] && Object.keys(allData[activeCategory]).map(sub => (
              <button key={sub} 
+                {...bindLongPress('subcategory', sub, activeCategory)}
                 onClick={()=>{
+                    if (ignoreClick.current) return; // 如果是長按，就不執行切換
                     setActiveSubcategory(sub);
                     const tabs = Object.keys(allData[activeCategory][sub]||{});
                     setActiveTab(tabs[0]||'');
@@ -357,7 +426,12 @@ const UniversalSelector = () => {
         <div className="bg-slate-600 p-2 flex overflow-x-auto gap-2 no-scrollbar">
            {activeCategory && activeSubcategory && allData[activeCategory][activeSubcategory] && Object.keys(allData[activeCategory][activeSubcategory]).map(tab => (
              <button key={tab} 
-                onClick={()=>{setActiveTab(tab); setAppState('input');}} 
+                {...bindLongPress('tab', tab, activeCategory, activeSubcategory)}
+                onClick={()=>{
+                    if (ignoreClick.current) return;
+                    setActiveTab(tab); 
+                    setAppState('input');
+                }} 
                 onDoubleClick={()=>deleteItem('tab', tab)}
                 className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab===tab?'bg-teal-500 text-white font-bold':'bg-slate-500 text-slate-200 hover:bg-slate-400'}`}>
                 {tab}
@@ -394,6 +468,60 @@ const UniversalSelector = () => {
                 <Icon name="Trophy" className="w-20 h-20 text-yellow-500 mb-4"/>
                 <div className="text-4xl font-black mb-8 text-black">{currentKing}</div>
                 <button onClick={()=>setAppState('input')} className="bg-slate-800 text-white px-6 py-3 rounded-xl flex gap-2"><Icon name="RotateCcw"/> 重來</button>
+             </div>
+           )}
+
+           {/* --- 移動功能的選單 (Modal) --- */}
+           {moveConfig && (
+             <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
+                <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl max-h-[80vh]">
+                    <div className="bg-slate-800 p-4 text-white font-bold flex justify-between items-center">
+                        <span>移動: {moveConfig.name}</span>
+                        <button onClick={()=>setMoveConfig(null)}><Icon name="X" className="w-5 h-5"/></button>
+                    </div>
+                    
+                    <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
+                        {/* 步驟 1: 選擇大分類 */}
+                        <div>
+                            <div className="text-sm font-bold text-slate-500 mb-1">移動到哪個大分類？</div>
+                            <div className="flex flex-wrap gap-2">
+                                {Object.keys(allData).map(cat => (
+                                    <button key={cat} 
+                                        onClick={()=>{ setMoveToCat(cat); setMoveToSub(''); }}
+                                        className={`px-3 py-2 rounded-lg text-sm border ${moveToCat===cat ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-300'}`}>
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 步驟 2: 選擇小分類 (只有在移動 Tab 且已選大分類時出現) */}
+                        {moveConfig.type === 'tab' && moveToCat && (
+                            <div className="animate-fade-in">
+                                <div className="text-sm font-bold text-slate-500 mb-1 mt-2">選擇「{moveToCat}」下的小分類：</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.keys(allData[moveToCat] || {}).map(sub => (
+                                        <button key={sub}
+                                            onClick={()=>setMoveToSub(sub)}
+                                            className={`px-3 py-2 rounded-lg text-sm border ${moveToSub===sub ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-700 border-slate-300'}`}>
+                                            {sub}
+                                        </button>
+                                    ))}
+                                    {Object.keys(allData[moveToCat] || {}).length === 0 && <span className="text-xs text-red-400">此大分類下無小分類，無法移動</span>}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-4 border-t bg-slate-50 flex gap-2">
+                        <button onClick={()=>setMoveConfig(null)} className="flex-1 py-2 text-slate-500 bg-white border rounded-lg">取消</button>
+                        <button onClick={executeMove} 
+                            disabled={!moveToCat || (moveConfig.type==='tab' && !moveToSub)}
+                            className="flex-1 py-2 bg-teal-500 text-white rounded-lg font-bold disabled:bg-slate-300 disabled:cursor-not-allowed">
+                            確認移動
+                        </button>
+                    </div>
+                </div>
              </div>
            )}
         </div>
