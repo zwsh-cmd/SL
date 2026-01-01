@@ -509,7 +509,7 @@ const UniversalSelector = () => {
              </div>
         )}
 
-        {/* 第一層：Category (大分類) */}`
+        {/* 第一層：Category (大分類) */}
         <div className="bg-slate-800 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-slate-700">
            <div className="text-slate-400 text-xs font-bold shrink-0 px-1">大分類</div>
            {Object.keys(allData).map(cat => (
@@ -532,7 +532,7 @@ const UniversalSelector = () => {
            <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-slate-700 text-slate-400 rounded-lg hover:bg-slate-600 border border-slate-600"><Icon name="Plus" className="w-4 h-4"/></button>
         </div>
 
-        {/* 第二層：Subcategory (小分類) */}`
+        {/* 第二層：Subcategory (小分類) */}
         <div className="bg-slate-700 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-slate-600 shadow-inner">
            <div className="text-slate-300 text-xs font-bold shrink-0 px-1">次分類</div>
            {activeCategory && allData[activeCategory] && Object.keys(allData[activeCategory]).map(sub => (
