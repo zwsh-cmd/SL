@@ -137,49 +137,28 @@ const UniversalSelector = () => {
      const { type, name, currentCat, currentSub } = renameConfig;
      if (val === name) { setRenameConfig(null); return; }
      
-     let newData = JSON.parse(JSON.stringify(allData));
+     const newData = JSON.parse(JSON.stringify(allData));
      
+     // 檢查名稱是否重複並執行更名
      if (type === 'category') {
          if (newData[val]) { alert('名稱已存在'); return; }
-         const content = newData[name];
+         newData[val] = newData[name];
          delete newData[name];
-         // 1. 大分類排最前
-         newData = { [val]: content, ...newData };
-         
+         // 更新當前選取狀態，避免跳掉
          if (activeCategory === name) setActiveCategory(val);
          if (targetCatForAdd === name) setTargetCatForAdd(val);
      } 
      else if (type === 'subcategory') {
          if (newData[currentCat][val]) { alert('名稱已存在'); return; }
-         const content = newData[currentCat][name];
+         newData[currentCat][val] = newData[currentCat][name];
          delete newData[currentCat][name];
-         
-         // 1. 小分類排最前
-         const newCatContent = { [val]: content, ...newData[currentCat] };
-         // 2. 大分類排最前
-         delete newData[currentCat];
-         newData = { [currentCat]: newCatContent, ...newData };
-
          if (activeSubcategory === name) setActiveSubcategory(val);
          if (targetSubForAdd === name) setTargetSubForAdd(val);
      }
      else if (type === 'tab') {
          if (newData[currentCat][currentSub][val]) { alert('名稱已存在'); return; }
-         const content = newData[currentCat][currentSub][name];
+         newData[currentCat][currentSub][val] = newData[currentCat][currentSub][name];
          delete newData[currentCat][currentSub][name];
-         
-         // 1. 清單排最前
-         const newSubContent = { [val]: content, ...newData[currentCat][currentSub] };
-         
-         // 2. 小分類排最前 (先取出原本的，重組順序)
-         const tempCatContent = { ...newData[currentCat] };
-         delete tempCatContent[currentSub];
-         const newCatContent = { [currentSub]: newSubContent, ...tempCatContent };
-         
-         // 3. 大分類排最前
-         delete newData[currentCat];
-         newData = { [currentCat]: newCatContent, ...newData };
-
          if (activeTab === name) setActiveTab(val);
      }
 
@@ -190,7 +169,7 @@ const UniversalSelector = () => {
 
   const executeMove = () => {
     if (!moveConfig) return;
-    let newData = JSON.parse(JSON.stringify(allData));
+    const newData = JSON.parse(JSON.stringify(allData));
     const { type, name, currentCat, currentSub } = moveConfig;
 
     if (type === 'subcategory') {
@@ -198,35 +177,15 @@ const UniversalSelector = () => {
         const dataToMove = newData[currentCat][name];
         delete newData[currentCat][name];
         if (!newData[moveToCat]) newData[moveToCat] = {};
-        
-        // 1. 小分類排入目標最前
-        const newTargetCatContent = { [name]: dataToMove, ...newData[moveToCat] };
-        
-        // 2. 目標大分類排最前
-        delete newData[moveToCat];
-        newData = { [moveToCat]: newTargetCatContent, ...newData };
-        
+        newData[moveToCat][name] = dataToMove;
         if (activeSubcategory === name) setActiveSubcategory('');
     } 
     else if (type === 'tab') {
         if (!moveToCat || !moveToSub) return;
         const dataToMove = newData[currentCat][currentSub][name];
         delete newData[currentCat][currentSub][name];
-        
         if (!newData[moveToCat][moveToSub]) newData[moveToCat][moveToSub] = {};
-        
-        // 1. 清單排入目標小分類最前
-        const newTargetSubContent = { [name]: dataToMove, ...newData[moveToCat][moveToSub] };
-        
-        // 2. 目標小分類排最前
-        const tempTargetCatContent = { ...newData[moveToCat] };
-        delete tempTargetCatContent[moveToSub];
-        const newTargetCatContent = { [moveToSub]: newTargetSubContent, ...tempTargetCatContent };
-        
-        // 3. 目標大分類排最前
-        delete newData[moveToCat];
-        newData = { [moveToCat]: newTargetCatContent, ...newData };
-        
+        newData[moveToCat][moveToSub][name] = dataToMove;
         if (activeTab === name) setActiveTab('');
     }
 
@@ -365,57 +324,30 @@ const UniversalSelector = () => {
     const name = newName.trim();
     if (!name) return;
 
-    // 取得原始資料
-    const sourceData = allData;
-    let newData = {};
+    const newData = JSON.parse(JSON.stringify(allData)); // Deep copy
 
     if (addingType === 'category') {
-        if (!sourceData[name]) {
-            // 1. 新的大分類排第一
-            newData = { [name]: {}, ...sourceData };
-            
+        if (!newData[name]) {
+            newData[name] = {}; // 1. 建立空的大分類
             setActiveCategory(name);
-            setActiveSubcategory('');
+            setActiveSubcategory(''); // 不預設選取，介面會只顯示「+」
             setActiveTab(''); 
-        } else {
-            newData = sourceData; // 名稱重複，不變動
         }
     } else if (addingType === 'subcategory') {
-        if (activeCategory && !sourceData[activeCategory][name]) {
-            // 1. 小分類排第一
-            const newCatContent = { [name]: {}, ...sourceData[activeCategory] };
-            
-            // 2. 大分類排第一
-            newData = { [activeCategory]: newCatContent };
-            Object.keys(sourceData).forEach(k => {
-                if (k !== activeCategory) newData[k] = sourceData[k];
-            });
-            
+        if (activeCategory && !newData[activeCategory][name]) {
+            newData[activeCategory][name] = {}; // 2. 建立空的小分類
             setActiveSubcategory(name);
-            setActiveTab('');
-        } else { newData = sourceData; }
+            setActiveTab(''); // 不預設選取，介面會只顯示「+」
+        }
     } else if (addingType === 'tab') {
-        if (targetCatForAdd && targetSubForAdd && !sourceData[targetCatForAdd][targetSubForAdd][name]) {
-            // 1. 清單排第一
-            const newSubContent = { [name]: [], ...sourceData[targetCatForAdd][targetSubForAdd] };
-            
-            // 2. 小分類排第一 (使用過濾重建法)
-            const currentCatContent = sourceData[targetCatForAdd];
-            const newCatContent = { [targetSubForAdd]: newSubContent };
-            Object.keys(currentCatContent).forEach(k => {
-                if (k !== targetSubForAdd) newCatContent[k] = currentCatContent[k];
-            });
-            
-            // 3. 大分類排第一
-            newData = { [targetCatForAdd]: newCatContent };
-            Object.keys(sourceData).forEach(k => {
-                if (k !== targetCatForAdd) newData[k] = sourceData[k];
-            });
-            
+        // 使用選定的分類，而非預設 active
+        if (targetCatForAdd && targetSubForAdd && !newData[targetCatForAdd][targetSubForAdd][name]) {
+            newData[targetCatForAdd][targetSubForAdd][name] = [];
+            // 自動切換到新建立的 tab 位置
             setActiveCategory(targetCatForAdd);
             setActiveSubcategory(targetSubForAdd);
             setActiveTab(name);
-        } else { newData = sourceData; }
+        }
     }
     
     updateData(newData);
@@ -425,105 +357,34 @@ const UniversalSelector = () => {
 
   const deleteItem = (type, name) => {
       if (!confirm(`確定刪除 ${type}「${name}」嗎？`)) return;
-      
-      const sourceData = allData;
-      let newData = {};
+      const newData = JSON.parse(JSON.stringify(allData));
       
       if (type === 'category') {
-          // 重建 Root：跳過要刪除的
-          Object.keys(sourceData).forEach(k => {
-              if (k !== name) newData[k] = sourceData[k];
-          });
-          
+          delete newData[name];
+          // 如果刪光了，補一個預設
           if (Object.keys(newData).length === 0) newData['新大分類'] = {};
           setActiveCategory(Object.keys(newData)[0]);
-      } 
-      else if (type === 'subcategory') {
-          const currentCatContent = sourceData[activeCategory];
-          const newCatContent = {};
-          
-          // 重建大分類：跳過要刪除的
-          Object.keys(currentCatContent).forEach(k => {
-              if (k !== name) newCatContent[k] = currentCatContent[k];
-          });
-          
-          // 重建 Root：修改過的大分類排第一
-          newData = { [activeCategory]: newCatContent };
-          Object.keys(sourceData).forEach(k => {
-              if (k !== activeCategory) newData[k] = sourceData[k];
-          });
-          
-          setActiveSubcategory(Object.keys(newCatContent)[0] || '');
-      } 
-      else if (type === 'tab') {
-          const currentSubContent = sourceData[activeCategory][activeSubcategory];
-          const newSubContent = {};
-          
-          // 重建小分類：跳過要刪除的 (關鍵修正：確保這裡絕對不包含已刪除項目)
-          Object.keys(currentSubContent).forEach(k => {
-              if (k !== name) newSubContent[k] = currentSubContent[k];
-          });
-          
-          // 重建大分類：修改過的小分類排第一
-          const currentCatContent = sourceData[activeCategory];
-          const newCatContent = { [activeSubcategory]: newSubContent };
-          Object.keys(currentCatContent).forEach(k => {
-              if (k !== activeSubcategory) newCatContent[k] = currentCatContent[k];
-          });
-          
-          // 重建 Root：修改過的大分類排第一
-          newData = { [activeCategory]: newCatContent };
-          Object.keys(sourceData).forEach(k => {
-              if (k !== activeCategory) newData[k] = sourceData[k];
-          });
-
-          setActiveTab(Object.keys(newSubContent)[0] || '');
+      } else if (type === 'subcategory') {
+          delete newData[activeCategory][name];
+          setActiveSubcategory(Object.keys(newData[activeCategory])[0] || '');
+      } else if (type === 'tab') {
+          delete newData[activeCategory][activeSubcategory][name];
+          setActiveTab(Object.keys(newData[activeCategory][activeSubcategory])[0] || '');
       }
-      
       updateData(newData);
   };
 
   const addItem = () => {
     if (!inputValue.trim()) return;
-    let newData = JSON.parse(JSON.stringify(allData));
-    
-    // 1. 更新清單內容
-    const updatedList = [...newData[activeCategory][activeSubcategory][activeTab], inputValue.trim()];
-    
-    // 2. 清單排入小分類最前
-    const newSubContent = { [activeTab]: updatedList, ...newData[activeCategory][activeSubcategory] };
-    
-    // 3. 小分類排入大分類最前
-    const tempCatContent = { ...newData[activeCategory] };
-    delete tempCatContent[activeSubcategory];
-    const newCatContent = { [activeSubcategory]: newSubContent, ...tempCatContent };
-    
-    // 4. 大分類排入根目錄最前
-    delete newData[activeCategory];
-    newData = { [activeCategory]: newCatContent, ...newData };
-
+    const newData = JSON.parse(JSON.stringify(allData));
+    newData[activeCategory][activeSubcategory][activeTab].push(inputValue.trim());
     updateData(newData);
     setInputValue('');
   };
 
   const removeItem = (idx) => {
-    let newData = JSON.parse(JSON.stringify(allData));
-    
-    // 1. 更新清單內容
-    const updatedList = currentList.filter((_, i) => i !== idx);
-    
-    // 2. 清單排入小分類最前
-    const newSubContent = { [activeTab]: updatedList, ...newData[activeCategory][activeSubcategory] };
-    
-    // 3. 小分類排入大分類最前
-    const tempCatContent = { ...newData[activeCategory] };
-    delete tempCatContent[activeSubcategory];
-    const newCatContent = { [activeSubcategory]: newSubContent, ...tempCatContent };
-    
-    // 4. 大分類排入根目錄最前
-    delete newData[activeCategory];
-    newData = { [activeCategory]: newCatContent, ...newData };
-
+    const newData = JSON.parse(JSON.stringify(allData));
+    newData[activeCategory][activeSubcategory][activeTab] = currentList.filter((_, i) => i !== idx);
     updateData(newData);
   };
 
