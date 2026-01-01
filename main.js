@@ -5,12 +5,12 @@ import { getFirestore, doc, onSnapshot, setDoc, enableIndexedDbPersistence } fro
 
 // 🔴 🔴 🔴 重要提醒：請去 Firebase Console 申請後，回來替換這裡的內容 🔴 🔴 🔴
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDPQZVgJlVgXBKtcIzQ1Islwpjb49kzqPM",
+  authDomain: "slct-40c62.firebaseapp.com",
+  projectId: "slct-40c62",
+  storageBucket: "slct-40c62.firebasestorage.app",
+  messagingSenderId: "543185237078",
+  appId: "1:543185237078:web:1f80b0b42ee3e694bd37f7"
 };
 
 const app = initializeApp(firebaseConfig);
