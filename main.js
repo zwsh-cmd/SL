@@ -181,7 +181,7 @@ const UniversalSelector = () => {
     <div className="min-h-screen p-4 flex flex-col items-center justify-center">
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden h-[85vh] flex flex-col">
         <div className="bg-slate-800 p-4 text-white flex justify-between items-center">
-           <h1 className="font-bold flex gap-2 items-center"><img src="./icon.png" className="w-6 h-6 rounded-md object-contain bg-white/10" alt="Logo"/> 雲端選擇器</h1>
+           <h1 className="font-bold flex gap-2 items-center"><img src="./icon.png" className="w-8 h-8 object-contain" alt="Logo"/> 雲端選擇器</h1>
            <div className="flex gap-2">
              <button onClick={()=>setIsAddingCategory(!isAddingCategory)}>{isAddingCategory?<Icon name="X" className="w-5 h-5"/>:<Icon name="Plus" className="w-5 h-5"/>}</button>
              <button onClick={handleLogout}><Icon name="LogOut" className="w-5 h-5 text-red-300"/></button>
