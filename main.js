@@ -188,7 +188,7 @@ const UniversalSelector = () => {
            </div>
         </div>
         {isAddingCategory && <div className="bg-slate-700 p-2 flex gap-2"><input value={newCategoryName} onChange={e=>setNewCategoryName(e.target.value)} className="flex-1 px-2 rounded text-black"/><button onClick={addCategory} className="text-white px-2">新增</button></div>}
-        <div className="bg-slate-700 p-2 overflow-x-auto flex gap-2">
+        <div className="bg-slate-700 p-2 flex flex-wrap gap-2">
            {Object.keys(allData).map(cat => (
              <button key={cat} onClick={()=>{setActiveTab(cat);setAppState('input')}} className={`px-3 py-1 rounded-full text-sm ${activeTab===cat?'bg-teal-500 text-white':'bg-slate-600 text-slate-300'}`}>{cat}</button>
            ))}
