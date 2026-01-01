@@ -137,28 +137,36 @@ const UniversalSelector = () => {
      const { type, name, currentCat, currentSub } = renameConfig;
      if (val === name) { setRenameConfig(null); return; }
      
-     const newData = JSON.parse(JSON.stringify(allData));
+     // 使用 let 因為我們可能會重新賦值 newData (針對大分類)
+     let newData = JSON.parse(JSON.stringify(allData));
      
-     // 檢查名稱是否重複並執行更名
      if (type === 'category') {
          if (newData[val]) { alert('名稱已存在'); return; }
-         newData[val] = newData[name];
+         const content = newData[name];
          delete newData[name];
-         // 更新當前選取狀態，避免跳掉
+         // 將新名稱放在物件最前面
+         newData = { [val]: content, ...newData };
+         
          if (activeCategory === name) setActiveCategory(val);
          if (targetCatForAdd === name) setTargetCatForAdd(val);
      } 
      else if (type === 'subcategory') {
          if (newData[currentCat][val]) { alert('名稱已存在'); return; }
-         newData[currentCat][val] = newData[currentCat][name];
+         const content = newData[currentCat][name];
          delete newData[currentCat][name];
+         // 將新小分類放在該大分類的最前面
+         newData[currentCat] = { [val]: content, ...newData[currentCat] };
+
          if (activeSubcategory === name) setActiveSubcategory(val);
          if (targetSubForAdd === name) setTargetSubForAdd(val);
      }
      else if (type === 'tab') {
          if (newData[currentCat][currentSub][val]) { alert('名稱已存在'); return; }
-         newData[currentCat][currentSub][val] = newData[currentCat][currentSub][name];
+         const content = newData[currentCat][currentSub][name];
          delete newData[currentCat][currentSub][name];
+         // 將新清單放在該小分類的最前面
+         newData[currentCat][currentSub] = { [val]: content, ...newData[currentCat][currentSub] };
+
          if (activeTab === name) setActiveTab(val);
      }
 
@@ -177,7 +185,10 @@ const UniversalSelector = () => {
         const dataToMove = newData[currentCat][name];
         delete newData[currentCat][name];
         if (!newData[moveToCat]) newData[moveToCat] = {};
-        newData[moveToCat][name] = dataToMove;
+        
+        // 將移動的小分類排在目標大分類的最前面
+        newData[moveToCat] = { [name]: dataToMove, ...newData[moveToCat] };
+        
         if (activeSubcategory === name) setActiveSubcategory('');
     } 
     else if (type === 'tab') {
@@ -185,7 +196,10 @@ const UniversalSelector = () => {
         const dataToMove = newData[currentCat][currentSub][name];
         delete newData[currentCat][currentSub][name];
         if (!newData[moveToCat][moveToSub]) newData[moveToCat][moveToSub] = {};
-        newData[moveToCat][moveToSub][name] = dataToMove;
+        
+        // 將移動的清單排在目標小分類的最前面
+        newData[moveToCat][moveToSub] = { [name]: dataToMove, ...newData[moveToCat][moveToSub] };
+        
         if (activeTab === name) setActiveTab('');
     }
 
@@ -324,26 +338,29 @@ const UniversalSelector = () => {
     const name = newName.trim();
     if (!name) return;
 
-    const newData = JSON.parse(JSON.stringify(allData)); // Deep copy
+    // 使用 let 以便重新賦值
+    let newData = JSON.parse(JSON.stringify(allData));
 
     if (addingType === 'category') {
         if (!newData[name]) {
-            newData[name] = {}; // 1. 建立空的大分類
+            // 新增空的大分類，並排在最前面
+            newData = { [name]: {}, ...newData };
             setActiveCategory(name);
-            setActiveSubcategory(''); // 不預設選取，介面會只顯示「+」
+            setActiveSubcategory('');
             setActiveTab(''); 
         }
     } else if (addingType === 'subcategory') {
         if (activeCategory && !newData[activeCategory][name]) {
-            newData[activeCategory][name] = {}; // 2. 建立空的小分類
+            // 新增空的小分類，並排在該大分類的最前面
+            newData[activeCategory] = { [name]: {}, ...newData[activeCategory] };
             setActiveSubcategory(name);
-            setActiveTab(''); // 不預設選取，介面會只顯示「+」
+            setActiveTab('');
         }
     } else if (addingType === 'tab') {
-        // 使用選定的分類，而非預設 active
         if (targetCatForAdd && targetSubForAdd && !newData[targetCatForAdd][targetSubForAdd][name]) {
-            newData[targetCatForAdd][targetSubForAdd][name] = [];
-            // 自動切換到新建立的 tab 位置
+            // 新增空的清單，並排在該小分類的最前面
+            newData[targetCatForAdd][targetSubForAdd] = { [name]: [], ...newData[targetCatForAdd][targetSubForAdd] };
+            
             setActiveCategory(targetCatForAdd);
             setActiveSubcategory(targetSubForAdd);
             setActiveTab(name);
