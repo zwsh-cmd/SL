@@ -55,26 +55,34 @@ const Icon = ({ name, className }) => {
 };
 
 const UniversalSelector = () => {
-  // 恢復多分類結構預設值
+  // 定義三層結構的預設值
   const DEFAULT_DATA = {
-    '中餐': ['麥當勞', '巷口麵店', '排骨飯', '便利商店'],
-    '晚餐': ['火鍋', '牛排', '自己煮', '鹹水雞']
+    '大分類(未分類)': {
+      '小分類(未分類)': {
+        '中餐': ['麥當勞', '巷口麵店', '排骨飯', '便利商店'],
+        '晚餐': ['火鍋', '牛排', '自己煮', '鹹水雞']
+      }
+    }
   };
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('idle');
   
-  // State 改回物件結構 (allData)
+  // allData 結構: { Category: { Subcategory: { Tab: [Items] } } }
   const [allData, setAllData] = useState(DEFAULT_DATA);
-  const [activeTab, setActiveTab] = useState('中餐');
+  
+  // 三層選擇狀態
+  const [activeCategory, setActiveCategory] = useState('');
+  const [activeSubcategory, setActiveSubcategory] = useState('');
+  const [activeTab, setActiveTab] = useState('');
   
   const [appState, setAppState] = useState('input');
   const [inputValue, setInputValue] = useState('');
   
-  // 新增分類相關 State
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  // 新增模式: null, 'category', 'subcategory', 'tab'
+  const [addingType, setAddingType] = useState(null);
+  const [newName, setNewName] = useState('');
 
   const [currentKing, setCurrentKing] = useState(null);
   const [challenger, setChallenger] = useState(null);
@@ -89,43 +97,54 @@ const UniversalSelector = () => {
           setLoading(false);
           if (docSnap.exists()) {
             const data = docSnap.data();
+            const raw = data.categories;
             let loadedData = DEFAULT_DATA;
             
-            // 1. 取得原始資料
-            const raw = data.categories;
-            
-            // 2. 智慧資料清洗與遷移 (Flatten Logic)
+            // --- 結構遷移與檢查邏輯 ---
             if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
-                let cleanData = {};
-                Object.keys(raw).forEach(key => {
-                    const val = raw[key];
-                    if (Array.isArray(val)) {
-                        // 情況A: 正常的分類 (Key -> Array)
-                        cleanData[key] = val;
-                    } else if (typeof val === 'object' && val !== null) {
-                        // 情況B: 舊版的大分類 (Group -> Cat -> Array)，執行攤平
-                        Object.keys(val).forEach(subKey => {
-                           if (Array.isArray(val[subKey])) {
-                               cleanData[subKey] = val[subKey];
-                           }
-                        });
-                    }
-                });
+                // 檢查是否為舊的單層結構 (Key -> Array)
+                const firstKey = Object.keys(raw)[0];
+                const firstVal = raw[firstKey];
                 
-                if (Object.keys(cleanData).length > 0) {
-                    loadedData = cleanData;
+                if (Array.isArray(firstVal)) {
+                    // 偵測到舊結構，執行遷移：全部塞入預設分類
+                    loadedData = {
+                        '大分類(未分類)': {
+                            '小分類(未分類)': raw
+                        }
+                    };
+                } else if (typeof firstVal === 'object') {
+                    // 可能是三層結構，再檢查一層
+                    const subKey = Object.keys(firstVal)[0];
+                    if (subKey && Array.isArray(firstVal[subKey])) {
+                         // 這是兩層結構 (Category -> Tab)，需升級為三層
+                         let upgradedData = {};
+                         Object.keys(raw).forEach(cat => {
+                             upgradedData[cat] = { '小分類(未分類)': raw[cat] };
+                         });
+                         loadedData = upgradedData;
+                    } else {
+                        // 認定為正確的三層結構
+                        loadedData = raw;
+                    }
                 }
-            } 
-            // 3. 相容單一清單舊資料
-            else if (data.items && Array.isArray(data.items)) {
-                loadedData = { '預設清單': data.items };
             }
             
             setAllData(loadedData);
             
-            // 安全設定選中的 Tab
-            const keys = Object.keys(loadedData);
-            setActiveTab(prev => (loadedData[prev] ? prev : keys[0] || ''));
+            // 初始化選擇
+            const cats = Object.keys(loadedData);
+            const firstCat = cats[0] || '';
+            setActiveCategory(prev => loadedData[prev] ? prev : firstCat);
+            
+            const subs = firstCat ? Object.keys(loadedData[firstCat] || {}) : [];
+            const firstSub = subs[0] || '';
+            setActiveSubcategory(firstSub);
+            
+            const tabs = (firstCat && firstSub) ? Object.keys(loadedData[firstCat][firstSub] || {}) : [];
+            const firstTab = tabs[0] || '';
+            setActiveTab(firstTab);
+
           } else {
             saveDataToCloud(DEFAULT_DATA, currentUser.uid);
           }
@@ -148,10 +167,8 @@ const UniversalSelector = () => {
       try {
         const userRef = doc(db, 'users', uid);
         try {
-          // 嘗試使用 updateDoc 來「替換」categories 欄位 (這樣才能真的刪除分類)
           await updateDoc(userRef, { categories: newData, lastUpdated: new Date() });
         } catch (err) {
-          // 如果文件不存在 (例如新使用者)，則使用 setDoc 建立
           await setDoc(userRef, { categories: newData, lastUpdated: new Date() });
         }
         setSyncStatus('saved');
@@ -176,44 +193,76 @@ const UniversalSelector = () => {
     if (confirm("確定要登出嗎？")) { await signOut(auth); setAppState('input'); }
   };
 
-  // 防呆：確認是陣列才回傳，否則回傳空陣列，防止白屏
-  const currentList = Array.isArray(allData[activeTab]) ? allData[activeTab] : [];
+  // 取得目前顯示的項目列表
+  const currentList = (
+      allData[activeCategory] && 
+      allData[activeCategory][activeSubcategory] && 
+      Array.isArray(allData[activeCategory][activeSubcategory][activeTab])
+  ) ? allData[activeCategory][activeSubcategory][activeTab] : [];
+
+  // --- CRUD 操作 ---
+  const handleAddSubmit = () => {
+    const name = newName.trim();
+    if (!name) return;
+
+    const newData = JSON.parse(JSON.stringify(allData)); // Deep copy
+
+    if (addingType === 'category') {
+        if (!newData[name]) {
+            newData[name] = { '新小分類': { '新清單': [] } };
+            setActiveCategory(name);
+            setActiveSubcategory('新小分類');
+            setActiveTab('新清單');
+        }
+    } else if (addingType === 'subcategory') {
+        if (activeCategory && !newData[activeCategory][name]) {
+            newData[activeCategory][name] = { '新清單': [] };
+            setActiveSubcategory(name);
+            setActiveTab('新清單');
+        }
+    } else if (addingType === 'tab') {
+        if (activeCategory && activeSubcategory && !newData[activeCategory][activeSubcategory][name]) {
+            newData[activeCategory][activeSubcategory][name] = [];
+            setActiveTab(name);
+        }
+    }
+    
+    updateData(newData);
+    setAddingType(null);
+    setNewName('');
+  };
+
+  const deleteItem = (type, name) => {
+      if (!confirm(`確定刪除 ${type}「${name}」嗎？`)) return;
+      const newData = JSON.parse(JSON.stringify(allData));
+      
+      if (type === 'category') {
+          delete newData[name];
+          // 如果刪光了，補一個預設
+          if (Object.keys(newData).length === 0) newData['新大分類'] = {};
+          setActiveCategory(Object.keys(newData)[0]);
+      } else if (type === 'subcategory') {
+          delete newData[activeCategory][name];
+          setActiveSubcategory(Object.keys(newData[activeCategory])[0] || '');
+      } else if (type === 'tab') {
+          delete newData[activeCategory][activeSubcategory][name];
+          setActiveTab(Object.keys(newData[activeCategory][activeSubcategory])[0] || '');
+      }
+      updateData(newData);
+  };
 
   const addItem = () => {
     if (!inputValue.trim()) return;
-    const newData = { ...allData, [activeTab]: [...currentList, inputValue.trim()] };
+    const newData = JSON.parse(JSON.stringify(allData));
+    newData[activeCategory][activeSubcategory][activeTab].push(inputValue.trim());
     updateData(newData);
     setInputValue('');
   };
 
   const removeItem = (idx) => {
-    const newData = { ...allData, [activeTab]: currentList.filter((_, i) => i !== idx) };
+    const newData = JSON.parse(JSON.stringify(allData));
+    newData[activeCategory][activeSubcategory][activeTab] = currentList.filter((_, i) => i !== idx);
     updateData(newData);
-  };
-  
-  const addCategory = () => {
-      const name = newCategoryName.trim();
-      if (!name || allData[name]) return;
-      const newData = { ...allData, [name]: [] };
-      updateData(newData);
-      setActiveTab(name);
-      setNewCategoryName('');
-      setIsAddingCategory(false);
-  };
-  
-  const deleteCategory = (cat) => {
-      if (!confirm(`確定刪除分類「${cat}」嗎？`)) return;
-      const newData = { ...allData };
-      delete newData[cat];
-      
-      // 確保至少有一個分類
-      if (Object.keys(newData).length === 0) {
-          newData['新分類'] = [];
-      }
-      
-      updateData(newData);
-      const newKeys = Object.keys(newData);
-      if (activeTab === cat) setActiveTab(newKeys[0]);
   };
 
   const startBattle = () => {
@@ -252,35 +301,75 @@ const UniversalSelector = () => {
         <div className="bg-slate-800 p-4 text-white flex justify-between items-center">
            <h1 className="font-bold flex gap-2 items-center"><img src="./icon.png" className="w-8 h-8 object-contain" alt="Logo"/> 雲端選擇器</h1>
            <div className="flex gap-2">
-             <button onClick={()=>setIsAddingCategory(!isAddingCategory)}>{isAddingCategory?<Icon name="X" className="w-5 h-5"/>:<Icon name="Plus" className="w-5 h-5"/>}</button>
              <button onClick={handleLogout}><Icon name="LogOut" className="w-5 h-5 text-red-300"/></button>
            </div>
         </div>
         
-        {/* 新增分類區塊 */}
-        {isAddingCategory && (
-            <div className="bg-slate-700 p-2 flex gap-2">
-                <input value={newCategoryName} onChange={e=>setNewCategoryName(e.target.value)} className="flex-1 px-2 rounded text-black" placeholder="新分類名稱"/>
-                <button onClick={addCategory} className="text-white px-2">新增</button>
+        {/* 通用新增輸入框 */}
+        {addingType && (
+            <div className="bg-slate-900 p-3 flex gap-2 items-center animate-fade-in">
+                <span className="text-white text-sm">新增{addingType === 'category' ? '大分類' : addingType === 'subcategory' ? '小分類' : '清單'}:</span>
+                <input value={newName} onChange={e=>setNewName(e.target.value)} className="flex-1 px-2 py-1 rounded text-black text-sm" autoFocus/>
+                <button onClick={handleAddSubmit} className="bg-teal-500 text-white px-3 py-1 rounded text-sm">確定</button>
+                <button onClick={()=>setAddingType(null)} className="text-slate-400"><Icon name="X" className="w-4 h-4"/></button>
             </div>
         )}
 
-        {/* 分類 Tabs (可水平捲動) */}
-        <div className="bg-slate-700 p-2 flex overflow-x-auto gap-2 no-scrollbar">
+        {/* 第一層：Category (大分類) */}
+        <div className="bg-slate-800 p-2 flex overflow-x-auto gap-2 no-scrollbar border-b border-slate-700">
            {Object.keys(allData).map(cat => (
              <button key={cat} 
-                onClick={()=>{setActiveTab(cat); setAppState('input');}} 
-                onDoubleClick={()=>deleteCategory(cat)}
-                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab===cat?'bg-teal-500 text-white font-bold':'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}>
+                onClick={()=>{
+                    setActiveCategory(cat); 
+                    const subs = Object.keys(allData[cat]||{}); 
+                    setActiveSubcategory(subs[0]||'');
+                    const tabs = subs[0] ? Object.keys(allData[cat][subs[0]]||{}) : [];
+                    setActiveTab(tabs[0]||'');
+                    setAppState('input');
+                }} 
+                onDoubleClick={()=>deleteItem('category', cat)}
+                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors border ${activeCategory===cat?'bg-indigo-600 border-indigo-400 text-white font-bold':'bg-slate-700 border-transparent text-slate-400 hover:bg-slate-600'}`}>
                 {cat}
              </button>
            ))}
+           <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-slate-700 text-slate-400 rounded-lg hover:bg-slate-600 border border-slate-600"><Icon name="Plus" className="w-4 h-4"/></button>
+        </div>
+
+        {/* 第二層：Subcategory (小分類) */}
+        <div className="bg-slate-700 p-2 flex overflow-x-auto gap-2 no-scrollbar border-b border-slate-600 shadow-inner">
+           {activeCategory && allData[activeCategory] && Object.keys(allData[activeCategory]).map(sub => (
+             <button key={sub} 
+                onClick={()=>{
+                    setActiveSubcategory(sub);
+                    const tabs = Object.keys(allData[activeCategory][sub]||{});
+                    setActiveTab(tabs[0]||'');
+                    setAppState('input');
+                }} 
+                onDoubleClick={()=>deleteItem('subcategory', sub)}
+                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors ${activeSubcategory===sub?'bg-sky-600 text-white font-bold':'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}>
+                {sub}
+             </button>
+           ))}
+           {activeCategory && <button onClick={()=>setAddingType('subcategory')} className="px-2 py-1 bg-slate-600 text-slate-400 rounded-lg hover:bg-slate-500"><Icon name="Plus" className="w-4 h-4"/></button>}
+        </div>
+
+        {/* 第三層：Tab (清單/項目) */}
+        <div className="bg-slate-600 p-2 flex overflow-x-auto gap-2 no-scrollbar">
+           {activeCategory && activeSubcategory && allData[activeCategory][activeSubcategory] && Object.keys(allData[activeCategory][activeSubcategory]).map(tab => (
+             <button key={tab} 
+                onClick={()=>{setActiveTab(tab); setAppState('input');}} 
+                onDoubleClick={()=>deleteItem('tab', tab)}
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab===tab?'bg-teal-500 text-white font-bold':'bg-slate-500 text-slate-200 hover:bg-slate-400'}`}>
+                {tab}
+             </button>
+           ))}
+           {activeSubcategory && <button onClick={()=>setAddingType('tab')} className="px-2 py-1 bg-slate-500 text-slate-300 rounded-full hover:bg-slate-400"><Icon name="Plus" className="w-4 h-4"/></button>}
         </div>
         
         <div className="flex-1 p-4 overflow-y-auto">
            {appState === 'input' && (
              <div className="flex flex-col h-full gap-4">
-               <div className="flex gap-2"><input value={inputValue} onChange={e=>setInputValue(e.target.value)} className="flex-1 border p-3 rounded-xl" placeholder={`新增至 ${activeTab}...`}/><button onClick={addItem} className="bg-slate-800 text-white px-4 rounded-xl"><Icon name="Plus"/></button></div>
+               <div className="flex gap-2"><input value={inputValue} onChange={e=>setInputValue(e.target.value)} className="flex-1 border p-3 rounded-xl" placeholder={`新增至 ${activeTab || '清單'}...`}/><button onClick={addItem} className="bg-slate-800 text-white px-4 rounded-xl"><Icon name="Plus"/></button></div>
                <div className="flex-1 overflow-y-auto space-y-2">
                  {currentList.map((item,i) => (
                    <div key={i} className="flex justify-between bg-slate-50 p-3 rounded border">
@@ -288,7 +377,7 @@ const UniversalSelector = () => {
                         <button onClick={()=>removeItem(i)} className="text-red-400"><Icon name="Trash2" className="w-4 h-4"/></button>
                    </div>
                  ))}
-                 {currentList.length === 0 && <div className="text-center text-gray-400 mt-10">此分類沒有項目</div>}
+                 {currentList.length === 0 && <div className="text-center text-gray-400 mt-10">此清單沒有項目</div>}
                </div>
                <button onClick={startBattle} disabled={currentList.length<2} className="w-full bg-teal-500 text-white py-4 rounded-xl font-bold disabled:bg-gray-200">開始 PK</button>
              </div>
