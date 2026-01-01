@@ -55,17 +55,27 @@ const Icon = ({ name, className }) => {
 };
 
 const UniversalSelector = () => {
-  // 預設只有簡單的項目
-  const DEFAULT_ITEMS = ['麥當勞', '自己煮', '巷口麵店', '便利商店'];
+  // 恢復多分類結構預設值
+  const DEFAULT_DATA = {
+    '中餐': ['麥當勞', '巷口麵店', '排骨飯', '便利商店'],
+    '晚餐': ['火鍋', '牛排', '自己煮', '鹹水雞']
+  };
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('idle');
-  const [items, setItems] = useState(DEFAULT_ITEMS); // 取代原本的 allData，只存陣列
+  
+  // State 改回物件結構 (allData)
+  const [allData, setAllData] = useState(DEFAULT_DATA);
+  const [activeTab, setActiveTab] = useState('中餐');
   
   const [appState, setAppState] = useState('input');
   const [inputValue, setInputValue] = useState('');
   
+  // 新增分類相關 State
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
   const [currentKing, setCurrentKing] = useState(null);
   const [challenger, setChallenger] = useState(null);
   const [queue, setQueue] = useState([]);
@@ -78,18 +88,30 @@ const UniversalSelector = () => {
         const unsubDoc = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
           setLoading(false);
           if (docSnap.exists()) {
-            // 直接讀取 items 欄位
-            const data = docSnap.data().items;
-            if (Array.isArray(data)) {
-              setItems(data);
+            const data = docSnap.data();
+            let loadedData = DEFAULT_DATA;
+            
+            // 優先檢查是否有 'categories' (多分類資料)
+            if (data.categories && typeof data.categories === 'object' && !Array.isArray(data.categories)) {
+                loadedData = data.categories;
+            } 
+            // 如果只有 'items' (單一清單舊資料)，自動遷移到「預設清單」分類
+            else if (data.items && Array.isArray(data.items)) {
+                loadedData = { '預設清單': data.items };
             }
+            
+            setAllData(loadedData);
+            
+            // 安全設定選中的 Tab
+            const keys = Object.keys(loadedData);
+            setActiveTab(prev => (loadedData[prev] ? prev : keys[0] || ''));
           } else {
-            saveDataToCloud(DEFAULT_ITEMS, currentUser.uid);
+            saveDataToCloud(DEFAULT_DATA, currentUser.uid);
           }
         }, () => setLoading(false));
         return () => unsubDoc();
       } else {
-        setItems(DEFAULT_ITEMS);
+        setAllData(DEFAULT_DATA);
         setLoading(false);
       }
     });
@@ -97,23 +119,23 @@ const UniversalSelector = () => {
   }, []);
 
   const saveTimeoutRef = useRef(null);
-  const saveDataToCloud = async (newItems, uid = user?.uid) => {
+  const saveDataToCloud = async (newData, uid = user?.uid) => {
     if (!uid) return;
     setSyncStatus('syncing');
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(async () => {
       try {
-        // 儲存到 items 欄位
-        await setDoc(doc(db, 'users', uid), { items: newItems, lastUpdated: new Date() }, { merge: true });
+        // 儲存到 categories 欄位
+        await setDoc(doc(db, 'users', uid), { categories: newData, lastUpdated: new Date() }, { merge: true });
         setSyncStatus('saved');
         setTimeout(() => setSyncStatus('idle'), 2000);
       } catch (err) { setSyncStatus('error'); }
     }, 1000);
   };
 
-  const updateItems = (newItems) => {
-    setItems(newItems);
-    saveDataToCloud(newItems);
+  const updateData = (newData) => {
+    setAllData(newData);
+    saveDataToCloud(newData);
   };
 
   const handleLogin = async () => {
@@ -124,17 +146,43 @@ const UniversalSelector = () => {
     if (confirm("確定要登出嗎？")) { await signOut(auth); setAppState('input'); }
   };
 
-  // 為了相容下方的 battle 邏輯，建立一個 currentList 別名
-  const currentList = items;
+  const currentList = allData[activeTab] || [];
 
   const addItem = () => {
     if (!inputValue.trim()) return;
-    updateItems([...items, inputValue.trim()]);
+    const newData = { ...allData, [activeTab]: [...currentList, inputValue.trim()] };
+    updateData(newData);
     setInputValue('');
   };
 
   const removeItem = (idx) => {
-    updateItems(items.filter((_, i) => i !== idx));
+    const newData = { ...allData, [activeTab]: currentList.filter((_, i) => i !== idx) };
+    updateData(newData);
+  };
+  
+  const addCategory = () => {
+      const name = newCategoryName.trim();
+      if (!name || allData[name]) return;
+      const newData = { ...allData, [name]: [] };
+      updateData(newData);
+      setActiveTab(name);
+      setNewCategoryName('');
+      setIsAddingCategory(false);
+  };
+  
+  const deleteCategory = (cat) => {
+      if (!confirm(`確定刪除分類「${cat}」嗎？`)) return;
+      const newData = { ...allData };
+      delete newData[cat];
+      
+      // 確保至少有一個分類
+      if (Object.keys(newData).length === 0) {
+          newData['新分類'] = [];
+      }
+      
+      updateData(newData);
+      const newKeys = Object.keys(newData);
+      if (activeTab === cat) setActiveTab(newKeys[0]);
   };
 
   const startBattle = () => {
@@ -173,14 +221,35 @@ const UniversalSelector = () => {
         <div className="bg-slate-800 p-4 text-white flex justify-between items-center">
            <h1 className="font-bold flex gap-2 items-center"><img src="./icon.png" className="w-8 h-8 object-contain" alt="Logo"/> 雲端選擇器</h1>
            <div className="flex gap-2">
+             <button onClick={()=>setIsAddingCategory(!isAddingCategory)}>{isAddingCategory?<Icon name="X" className="w-5 h-5"/>:<Icon name="Plus" className="w-5 h-5"/>}</button>
              <button onClick={handleLogout}><Icon name="LogOut" className="w-5 h-5 text-red-300"/></button>
            </div>
+        </div>
+        
+        {/* 新增分類區塊 */}
+        {isAddingCategory && (
+            <div className="bg-slate-700 p-2 flex gap-2">
+                <input value={newCategoryName} onChange={e=>setNewCategoryName(e.target.value)} className="flex-1 px-2 rounded text-black" placeholder="新分類名稱"/>
+                <button onClick={addCategory} className="text-white px-2">新增</button>
+            </div>
+        )}
+
+        {/* 分類 Tabs (可水平捲動) */}
+        <div className="bg-slate-700 p-2 flex overflow-x-auto gap-2 no-scrollbar">
+           {Object.keys(allData).map(cat => (
+             <button key={cat} 
+                onClick={()=>{setActiveTab(cat); setAppState('input');}} 
+                onDoubleClick={()=>deleteCategory(cat)}
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab===cat?'bg-teal-500 text-white font-bold':'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}>
+                {cat}
+             </button>
+           ))}
         </div>
         
         <div className="flex-1 p-4 overflow-y-auto">
            {appState === 'input' && (
              <div className="flex flex-col h-full gap-4">
-               <div className="flex gap-2"><input value={inputValue} onChange={e=>setInputValue(e.target.value)} className="flex-1 border p-3 rounded-xl" placeholder="新增..."/><button onClick={addItem} className="bg-slate-800 text-white px-4 rounded-xl"><Icon name="Plus"/></button></div>
+               <div className="flex gap-2"><input value={inputValue} onChange={e=>setInputValue(e.target.value)} className="flex-1 border p-3 rounded-xl" placeholder={`新增至 ${activeTab}...`}/><button onClick={addItem} className="bg-slate-800 text-white px-4 rounded-xl"><Icon name="Plus"/></button></div>
                <div className="flex-1 overflow-y-auto space-y-2">
                  {currentList.map((item,i) => (
                    <div key={i} className="flex justify-between bg-slate-50 p-3 rounded border">
@@ -188,6 +257,7 @@ const UniversalSelector = () => {
                         <button onClick={()=>removeItem(i)} className="text-red-400"><Icon name="Trash2" className="w-4 h-4"/></button>
                    </div>
                  ))}
+                 {currentList.length === 0 && <div className="text-center text-gray-400 mt-10">此分類沒有項目</div>}
                </div>
                <button onClick={startBattle} disabled={currentList.length<2} className="w-full bg-teal-500 text-white py-4 rounded-xl font-bold disabled:bg-gray-200">開始 PK</button>
              </div>
