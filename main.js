@@ -55,84 +55,24 @@ const Icon = ({ name, className }) => {
 };
 
 const UniversalSelector = () => {
-  // 1. 改為階層式預設資料
   const DEFAULT_CATEGORIES = {
-    '餐飲選擇': {
-      '中餐': ['麥當勞', '巷口麵店', '排骨飯', '便利商店'],
-      '晚餐': ['火鍋', '牛排', '自己煮', '鹹水雞']
-    },
-    '創作靈感': {
-      '寫作題材': ['回憶錄', '科幻短篇', '生活觀察'],
-      '繪畫風格': ['水彩', '素描', '油畫']
-    }
+    '中餐': ['麥當勞', '巷口麵店', '排骨飯', '便利商店'],
+    '晚餐': ['火鍋', '牛排', '自己煮', '鹹水雞'],
+    '寫作題材': ['回憶錄', '科幻短篇', '生活觀察', '讀書心得']
   };
 
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('idle');
   const [allData, setAllData] = useState(DEFAULT_CATEGORIES);
-  
-  // 2. 新增 activeGroup 狀態
-  const [activeGroup, setActiveGroup] = useState('餐飲選擇');
   const [activeTab, setActiveTab] = useState('中餐');
-  
   const [appState, setAppState] = useState('input');
   const [inputValue, setInputValue] = useState('');
-  
-  // 3. 新增控制群組/分類新增模式的狀態
-  const [addingMode, setAddingMode] = useState(null); // null, 'group', 'category'
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
-  
   const [currentKing, setCurrentKing] = useState(null);
   const [challenger, setChallenger] = useState(null);
   const [queue, setQueue] = useState([]);
-
-  // --- 新增：移動項目的相關狀態 ---
-  const [movingItem, setMovingItem] = useState(null); // { item: '名稱', index: 0 }
-  const [moveTargetGroup, setMoveTargetGroup] = useState(null);
-  const longPressTimer = useRef(null);
-
-  // 開始長按
-  const startLongPress = (item, index) => {
-    longPressTimer.current = setTimeout(() => {
-      setMovingItem({ item, index });
-      setMoveTargetGroup(null); // 重置選擇狀態
-      if (navigator.vibrate) navigator.vibrate(50); // 手機震動回饋
-    }, 800); // 設定長按時間為 0.8 秒
-  };
-
-  // 結束/取消長按
-  const endLongPress = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
-
-  // 執行移動
-  const executeMove = (targetCategory) => {
-     if (!movingItem || !moveTargetGroup) return;
-     
-     // 深拷貝一份資料以策安全
-     const newData = JSON.parse(JSON.stringify(allData));
-     const currentGroup = activeGroup;
-     
-     // 1. 從舊位置刪除
-     if (newData[currentGroup] && newData[currentGroup][activeTab]) {
-        newData[currentGroup][activeTab].splice(movingItem.index, 1);
-     }
-     
-     // 2. 加入新位置
-     if (!newData[moveTargetGroup][targetCategory]) {
-        newData[moveTargetGroup][targetCategory] = [];
-     }
-     newData[moveTargetGroup][targetCategory].push(movingItem.item);
-     
-     // 3. 儲存並關閉
-     updateData(newData);
-     setMovingItem(null);
-     setMoveTargetGroup(null);
-  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -142,56 +82,8 @@ const UniversalSelector = () => {
         const unsubDoc = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
           setLoading(false);
           if (docSnap.exists()) {
-            const rawData = docSnap.data().categories || {};
-            let cleanData = {};
-            
-            // --- 嚴格過濾邏輯 (只保留正確的結構) ---
-            if (typeof rawData === 'object' && !Array.isArray(rawData) && rawData !== null) {
-                Object.keys(rawData).forEach(groupKey => {
-                    const groupVal = rawData[groupKey];
-                    // 只有當這個「大分類」真的是一個物件(容器)，且不是陣列時，才保留它
-                    if (typeof groupVal === 'object' && !Array.isArray(groupVal) && groupVal !== null) {
-                        cleanData[groupKey] = {}; // 建立空的大分類容器
-                        
-                        // 接著檢查裡面的小分類
-                        Object.keys(groupVal).forEach(catKey => {
-                            const catVal = groupVal[catKey];
-                            // 只有當這個「小分類」真的是一個陣列(清單)時，才保留它
-                            if (Array.isArray(catVal)) {
-                                cleanData[groupKey][catKey] = catVal;
-                            }
-                        });
-                    }
-                    // 如果 groupVal 是字串、數字或陣列(舊資料)，直接丟棄，不顯示
-                });
-            }
-            
-            // 如果過濾完發現什麼都不剩 (或是資料庫原本就是壞的)，就載入預設值
-            if (Object.keys(cleanData).length === 0) {
-                cleanData = DEFAULT_CATEGORIES;
-            }
-            
-            setAllData(cleanData);
-            
-            // 設定預設選中項
-            const groups = Object.keys(cleanData);
-            if (groups.length > 0) {
-               setActiveGroup(prevGroup => {
-                   // 如果原本選中的群組還在(沒被過濾掉)，就維持；否則選第一個
-                   const nextGroup = cleanData[prevGroup] ? prevGroup : groups[0];
-                   
-                   const cats = Object.keys(cleanData[nextGroup] || {});
-                   setActiveTab(prevTab => {
-                       // 如果原本選中的小分類還在，就維持；否則選第一個
-                       return (cleanData[nextGroup][prevTab]) ? prevTab : (cats[0] || '');
-                   });
-                   return nextGroup;
-               });
-            } else {
-                setActiveGroup('');
-                setActiveTab('');
-            }
-
+            const data = docSnap.data().categories;
+            if (data) setAllData(data);
           } else {
             saveDataToCloud(DEFAULT_CATEGORIES, currentUser.uid);
           }
@@ -232,55 +124,28 @@ const UniversalSelector = () => {
     if (confirm("確定要登出嗎？")) { await signOut(auth); setAppState('input'); }
   };
 
-  const currentGroupData = allData[activeGroup] || {};
-  // 強制確認 currentList 必須是陣列，否則給空陣列 (防止白屏)
-  const rawList = currentGroupData[activeTab];
-  const currentList = Array.isArray(rawList) ? rawList : [];
-
+  const currentList = allData[activeTab] || [];
   const addItem = () => {
     if (!inputValue.trim()) return;
-    const newGroupData = { ...currentGroupData, [activeTab]: [...currentList, inputValue.trim()] };
-    updateData({ ...allData, [activeGroup]: newGroupData });
+    updateData({ ...allData, [activeTab]: [...(allData[activeTab] || []), inputValue.trim()] });
     setInputValue('');
   };
-
-  const removeItem = (idx) => {
-    const newGroupData = { ...currentGroupData, [activeTab]: currentList.filter((_, i) => i !== idx) };
-    updateData({ ...allData, [activeGroup]: newGroupData });
-  };
-
-  const handleAddSubmit = () => {
+  const removeItem = (idx) => updateData({ ...allData, [activeTab]: allData[activeTab].filter((_, i) => i !== idx) });
+  const clearCurrentList = () => confirm(`清空「${activeTab}」？`) && updateData({ ...allData, [activeTab]: [] });
+  const addCategory = () => {
     const name = newCategoryName.trim();
-    if (!name) return;
-    
-    if (addingMode === 'group') {
-       if (allData[name]) return;
-       updateData({ ...allData, [name]: {} });
-       setActiveGroup(name);
-    } else if (addingMode === 'category') {
-       if (currentGroupData[name]) return;
-       const newGroupData = { ...currentGroupData, [name]: [] };
-       updateData({ ...allData, [activeGroup]: newGroupData });
-       setActiveTab(name);
-    }
+    if (!name || allData[name]) return;
+    updateData({ ...allData, [name]: [] });
+    setActiveTab(name);
     setNewCategoryName('');
-    setAddingMode(null);
+    setIsAddingCategory(false);
   };
-
-  const deleteGroup = (groupName) => {
-    if (!confirm(`刪除大分類「${groupName}」及其下所有內容？`)) return;
+  const deleteCategory = (name) => {
+    if (Object.keys(allData).length <= 1 || !confirm(`刪除「${name}」？`)) return;
     const newData = { ...allData };
-    delete newData[groupName];
+    delete newData[name];
     updateData(newData);
-    if (activeGroup === groupName) setActiveGroup(Object.keys(newData)[0] || '');
-  };
-
-  const deleteCategory = (catName) => {
-    if (!confirm(`刪除小分類「${catName}」？`)) return;
-    const newGroupData = { ...currentGroupData };
-    delete newGroupData[catName];
-    updateData({ ...allData, [activeGroup]: newGroupData });
-    if (activeTab === catName) setActiveTab(Object.keys(newGroupData)[0] || '');
+    if (activeTab === name) setActiveTab(Object.keys(newData)[0]);
   };
   const startBattle = () => {
     if (currentList.length < 2) return;
@@ -314,67 +179,27 @@ const UniversalSelector = () => {
 
   return (
     <div className="min-h-screen p-4 flex flex-col items-center justify-center">
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden h-[85vh] flex flex-col relative">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden h-[85vh] flex flex-col">
         <div className="bg-slate-800 p-4 text-white flex justify-between items-center">
            <h1 className="font-bold flex gap-2 items-center"><img src="./icon.png" className="w-8 h-8 object-contain" alt="Logo"/> 雲端選擇器</h1>
            <div className="flex gap-2">
+             <button onClick={()=>setIsAddingCategory(!isAddingCategory)}>{isAddingCategory?<Icon name="X" className="w-5 h-5"/>:<Icon name="Plus" className="w-5 h-5"/>}</button>
              <button onClick={handleLogout}><Icon name="LogOut" className="w-5 h-5 text-red-300"/></button>
            </div>
         </div>
-        
-        {/* 新增模式輸入框 */}
-        {addingMode && (
-          <div className="bg-slate-900 p-3 flex gap-2 items-center animate-fade-in">
-            <span className="text-white text-sm whitespace-nowrap">{addingMode==='group'?'新增大群組':'新增小分類'}:</span>
-            <input value={newCategoryName} onChange={e=>setNewCategoryName(e.target.value)} className="flex-1 px-2 py-1 rounded text-black text-sm" autoFocus/>
-            <button onClick={handleAddSubmit} className="bg-teal-500 text-white px-3 py-1 rounded text-sm">確定</button>
-            <button onClick={()=>setAddingMode(null)} className="text-slate-400"><Icon name="X" className="w-4 h-4"/></button>
-          </div>
-        )}
-
-        {/* 第一層：大分類 (Groups) */}
-        <div className="bg-slate-800 px-2 py-2 flex overflow-x-auto gap-2 border-b border-slate-700 no-scrollbar">
-           {Object.keys(allData).map(group => (
-             <button key={group} 
-               onClick={()=>{setActiveGroup(group); setActiveTab(Object.keys(allData[group]||{})[0]||''); setAppState('input')}} 
-               onDoubleClick={()=>deleteGroup(group)}
-               className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors ${activeGroup===group?'bg-indigo-500 text-white font-bold':'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>
-               {group}
-             </button>
+        {isAddingCategory && <div className="bg-slate-700 p-2 flex gap-2"><input value={newCategoryName} onChange={e=>setNewCategoryName(e.target.value)} className="flex-1 px-2 rounded text-black"/><button onClick={addCategory} className="text-white px-2">新增</button></div>}
+        <div className="bg-slate-700 p-2 overflow-x-auto flex gap-2">
+           {Object.keys(allData).map(cat => (
+             <button key={cat} onClick={()=>{setActiveTab(cat);setAppState('input')}} className={`px-3 py-1 rounded-full text-sm ${activeTab===cat?'bg-teal-500 text-white':'bg-slate-600 text-slate-300'}`}>{cat}</button>
            ))}
-           <button onClick={()=>setAddingMode('group')} className="px-2 py-1 bg-slate-700 text-slate-400 rounded-lg hover:bg-slate-600"><Icon name="Plus" className="w-4 h-4"/></button>
         </div>
-
-        {/* 第二層：小分類 (Categories) */}
-        <div className="bg-slate-700 p-2 flex flex-wrap gap-2 shadow-inner min-h-[50px] items-center">
-           {activeGroup && Object.keys(allData[activeGroup] || {}).map(cat => (
-             <button key={cat} 
-               onClick={()=>{setActiveTab(cat);setAppState('input')}} 
-               onDoubleClick={()=>deleteCategory(cat)}
-               className={`px-3 py-1 rounded-full text-sm transition-colors ${activeTab===cat?'bg-teal-500 text-white shadow-lg':'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}>
-               {cat}
-             </button>
-           ))}
-           {activeGroup && <button onClick={()=>setAddingMode('category')} className="px-2 py-1 bg-slate-600 text-slate-400 rounded-full hover:bg-slate-500"><Icon name="Plus" className="w-4 h-4"/></button>}
-        </div>
-
         <div className="flex-1 p-4 overflow-y-auto">
            {appState === 'input' && (
              <div className="flex flex-col h-full gap-4">
                <div className="flex gap-2"><input value={inputValue} onChange={e=>setInputValue(e.target.value)} className="flex-1 border p-3 rounded-xl" placeholder="新增..."/><button onClick={addItem} className="bg-slate-800 text-white px-4 rounded-xl"><Icon name="Plus"/></button></div>
                <div className="flex-1 overflow-y-auto space-y-2">
                  {currentList.map((item,i) => (
-                   <div key={i} 
-                        onMouseDown={()=>startLongPress(item, i)} 
-                        onMouseUp={endLongPress} 
-                        onMouseLeave={endLongPress}
-                        onTouchStart={()=>startLongPress(item, i)}
-                        onTouchEnd={endLongPress}
-                        onContextMenu={(e)=>e.preventDefault()}
-                        className="flex justify-between bg-slate-50 p-3 rounded border select-none active:bg-slate-200 transition-colors cursor-pointer">
-                        <span className="text-black">{item}</span>
-                        <button onClick={(e)=>{e.stopPropagation(); removeItem(i);}} className="text-red-400"><Icon name="Trash2" className="w-4 h-4"/></button>
-                   </div>
+                   <div key={i} className="flex justify-between bg-slate-50 p-3 rounded border"><span className="text-black">{item}</span><button onClick={()=>removeItem(i)} className="text-red-400"><Icon name="Trash2" className="w-4 h-4"/></button></div>
                  ))}
                </div>
                <button onClick={startBattle} disabled={currentList.length<2} className="w-full bg-teal-500 text-white py-4 rounded-xl font-bold disabled:bg-gray-200">開始 PK</button>
@@ -395,53 +220,6 @@ const UniversalSelector = () => {
              </div>
            )}
         </div>
-
-        {/* --- 移動項目的彈出視窗 --- */}
-        {movingItem && (
-           <div className="absolute inset-0 bg-black/80 flex items-center justify-center z-50 p-4 animate-fade-in">
-             <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[80vh] shadow-2xl">
-               <div className="bg-slate-800 p-4 text-white font-bold flex justify-between items-center">
-                 <span className="truncate">移動: {movingItem.item}</span>
-                 <button onClick={()=>{setMovingItem(null); setMoveTargetGroup(null);}}><Icon name="X" className="w-5 h-5"/></button>
-               </div>
-               
-               <div className="p-4 overflow-y-auto flex-1">
-                 {!moveTargetGroup ? (
-                   <>
-                     <div className="text-sm text-slate-500 mb-2 font-bold">請選擇大分類 (Groups)</div>
-                     <div className="flex flex-col gap-2">
-                       {Object.keys(allData).map(group => (
-                         <button key={group} onClick={()=>setMoveTargetGroup(group)} className="p-4 bg-slate-100 rounded-lg text-left hover:bg-indigo-50 text-black font-medium border border-slate-200">
-                           {group}
-                         </button>
-                       ))}
-                     </div>
-                   </>
-                 ) : (
-                   <>
-                     <div className="flex items-center gap-2 mb-4">
-                        <button onClick={()=>setMoveTargetGroup(null)} className="text-slate-500 hover:text-slate-800 flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full text-sm"><Icon name="ArrowLeft" className="w-4 h-4"/> 返回大分類</button>
-                     </div>
-                     <div className="text-sm text-slate-500 mb-2 font-bold">選擇「{moveTargetGroup}」的小分類</div>
-                     <div className="flex flex-col gap-2">
-                       {Object.keys(allData[moveTargetGroup] || {}).map(cat => (
-                         <button key={cat} onClick={()=>executeMove(cat)} className="p-4 bg-white border border-slate-200 rounded-lg text-left hover:bg-teal-50 text-black hover:border-teal-500 shadow-sm">
-                           {cat}
-                         </button>
-                       ))}
-                       {Object.keys(allData[moveTargetGroup] || {}).length === 0 && <div className="text-slate-400 text-center py-8 bg-slate-50 rounded-lg">此分類下沒有小分類</div>}
-                     </div>
-                   </>
-                 )}
-               </div>
-               
-               <div className="p-4 border-t bg-slate-50">
-                  <button onClick={()=>{setMovingItem(null); setMoveTargetGroup(null);}} className="w-full py-3 text-slate-500 font-medium hover:bg-slate-200 rounded-lg transition-colors">取消</button>
-               </div>
-             </div>
-           </div>
-        )}
-
       </div>
     </div>
   );
