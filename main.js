@@ -88,7 +88,7 @@ const UniversalSelector = () => {
   const [targetCatForAdd, setTargetCatForAdd] = useState('');
   const [targetSubForAdd, setTargetSubForAdd] = useState('');
 
-  // 修改手機狀態列顏色 (配合 APP 標題 bg-slate-800 #1e293b)
+  // 修改手機狀態列顏色 (配合 APP 標題 bg-stone-700 #44403c)
   useEffect(() => {
     let meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) {
@@ -96,7 +96,7 @@ const UniversalSelector = () => {
         meta.name = "theme-color";
         document.head.appendChild(meta);
     }
-    meta.content = "#1e293b";
+    meta.content = "#44403c";
   }, []);
 
   // 使用 Ref 追蹤當前選擇，確保 onSnapshot 更新時不會重置選擇
@@ -442,22 +442,22 @@ const UniversalSelector = () => {
   );
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-slate-800 overflow-hidden">
+    <div className="fixed inset-0 w-full h-full bg-stone-700 overflow-hidden">
       <div className="w-full h-full flex flex-col relative bg-white">
-        <div className="bg-slate-800 p-4 text-white flex justify-between items-center">
+        <div className="bg-stone-700 p-4 text-white flex justify-between items-center">
            <h1 className="font-bold flex gap-2 items-center"><img src="./icon.png" className="w-8 h-8 object-contain" alt="Logo"/> AXELITH</h1>
            <div className="flex gap-2">
-             <button onClick={handleLogout}><Icon name="LogOut" className="w-5 h-5 text-red-300"/></button>
+             <button onClick={handleLogout}><Icon name="LogOut" className="w-5 h-5 text-rose-300"/></button>
            </div>
         </div>
         
-        {/* 通用新增輸入框 (僅限新增 大分類/小分類 時顯示條狀) */}
+        {/* 通用新增輸入框 */}
         {addingType && addingType !== 'tab' && (
-            <div className="bg-slate-900 p-3 flex gap-2 items-center animate-fade-in">
+            <div className="bg-stone-800 p-3 flex gap-2 items-center animate-fade-in">
                 <span className="text-white text-sm">新增{addingType === 'category' ? '大分類' : '小分類'}:</span>
                 <input value={newName} onChange={e=>setNewName(e.target.value)} className="flex-1 px-2 py-1 rounded text-black text-sm" autoFocus/>
-                <button onClick={handleAddSubmit} className="bg-teal-500 text-white px-3 py-1 rounded text-sm">確定</button>
-                <button onClick={()=>setAddingType(null)} className="text-slate-400"><Icon name="X" className="w-4 h-4"/></button>
+                <button onClick={handleAddSubmit} className="bg-stone-500 text-white px-3 py-1 rounded text-sm hover:bg-stone-400">確定</button>
+                <button onClick={()=>setAddingType(null)} className="text-stone-400"><Icon name="X" className="w-4 h-4"/></button>
             </div>
         )}
 
@@ -465,7 +465,7 @@ const UniversalSelector = () => {
         {addingType === 'tab' && (
              <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
                 <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl max-h-[80vh]">
-                    <div className="bg-slate-800 p-4 text-white font-bold flex justify-between items-center">
+                    <div className="bg-stone-700 p-4 text-white font-bold flex justify-between items-center">
                         <span>新增清單</span>
                         <button onClick={()=>setAddingType(null)}><Icon name="X" className="w-5 h-5"/></button>
                     </div>
@@ -473,47 +473,47 @@ const UniversalSelector = () => {
                     <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
                         {/* 輸入名稱 */}
                         <div>
-                            <div className="text-sm font-bold text-slate-500 mb-1">清單名稱</div>
+                            <div className="text-sm font-bold text-stone-500 mb-1">清單名稱</div>
                             <input value={newName} onChange={e=>setNewName(e.target.value)} className="w-full border p-2 rounded-lg text-black" placeholder="例如：早餐選擇" autoFocus/>
                         </div>
 
-                        {/* 步驟 1: 選擇大分類 */}
+                        {/* 步驟 1: 選擇大分類 (莫蘭迪色：Stone) */}
                         <div>
-                            <div className="text-sm font-bold text-slate-500 mb-1">歸屬大分類</div>
+                            <div className="text-sm font-bold text-stone-500 mb-1">歸屬大分類</div>
                             <div className="flex flex-wrap gap-2">
                                 {Object.keys(allData).map(cat => (
                                     <button key={cat} 
                                         onClick={()=>{ setTargetCatForAdd(cat); setTargetSubForAdd(''); }}
-                                        className={`px-3 py-2 rounded-lg text-sm border ${targetCatForAdd===cat ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-300'}`}>
+                                        className={`px-3 py-2 rounded-lg text-sm border ${targetCatForAdd===cat ? 'bg-stone-500 text-white border-stone-500' : 'bg-white text-stone-600 border-stone-200'}`}>
                                         {cat}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        {/* 步驟 2: 選擇小分類 */}
+                        {/* 步驟 2: 選擇小分類 (莫蘭迪色：Zinc) */}
                         {targetCatForAdd && (
                             <div className="animate-fade-in">
-                                <div className="text-sm font-bold text-slate-500 mb-1 mt-2">歸屬小分類</div>
+                                <div className="text-sm font-bold text-stone-500 mb-1 mt-2">歸屬小分類</div>
                                 <div className="flex flex-wrap gap-2">
                                     {Object.keys(allData[targetCatForAdd] || {}).map(sub => (
                                         <button key={sub}
                                             onClick={()=>setTargetSubForAdd(sub)}
-                                            className={`px-3 py-2 rounded-lg text-sm border ${targetSubForAdd===sub ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-700 border-slate-300'}`}>
+                                            className={`px-3 py-2 rounded-lg text-sm border ${targetSubForAdd===sub ? 'bg-zinc-500 text-white border-zinc-500' : 'bg-white text-stone-600 border-stone-200'}`}>
                                             {sub}
                                         </button>
                                     ))}
-                                    {Object.keys(allData[targetCatForAdd] || {}).length === 0 && <span className="text-xs text-red-400">無小分類，請先新增小分類</span>}
+                                    {Object.keys(allData[targetCatForAdd] || {}).length === 0 && <span className="text-xs text-rose-400">無小分類，請先新增小分類</span>}
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="p-4 border-t bg-slate-50 flex gap-2">
-                        <button onClick={()=>setAddingType(null)} className="flex-1 py-2 text-slate-500 bg-white border rounded-lg">取消</button>
+                    <div className="p-4 border-t bg-stone-50 flex gap-2">
+                        <button onClick={()=>setAddingType(null)} className="flex-1 py-2 text-stone-500 bg-white border rounded-lg">取消</button>
                         <button onClick={handleAddSubmit} 
                             disabled={!newName || !targetCatForAdd || !targetSubForAdd}
-                            className="flex-1 py-2 bg-teal-500 text-white rounded-lg font-bold disabled:bg-slate-300 disabled:cursor-not-allowed">
+                            className="flex-1 py-2 bg-stone-600 text-white rounded-lg font-bold disabled:bg-stone-300 disabled:cursor-not-allowed">
                             確認新增
                         </button>
                     </div>
@@ -521,14 +521,14 @@ const UniversalSelector = () => {
              </div>
         )}
 
-        {/* 第一層：Category (大分類) */}
-        <div className="bg-slate-800 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-slate-700">
-           <div className="text-slate-400 text-xs font-bold shrink-0 px-1">大分類</div>
+        {/* 第一層：Category (大分類) - Morandi Stone (Warm Grey) */}
+        <div className="bg-stone-700 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-stone-600">
+           <div className="text-stone-400 text-xs font-bold shrink-0 px-1">大分類</div>
            {Object.keys(allData).map(cat => (
              <button key={cat} 
                 {...bindLongPress('category', cat, null)}
                 onClick={()=>{
-                    if (ignoreClick.current) return; // 長按時忽略點擊
+                    if (ignoreClick.current) return; 
                     setActiveCategory(cat); 
                     const subs = Object.keys(allData[cat]||{}); 
                     setActiveSubcategory(subs[0]||'');
@@ -537,36 +537,36 @@ const UniversalSelector = () => {
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('category', cat)}
-                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors border ${activeCategory===cat?'bg-indigo-600 border-indigo-400 text-white font-bold':'bg-slate-700 border-transparent text-slate-400 hover:bg-slate-600'}`}>
+                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors border ${activeCategory===cat?'bg-stone-500 border-stone-400 text-white font-bold':'bg-stone-600 border-transparent text-stone-400 hover:bg-stone-500'}`}>
                 {cat}
              </button>
            ))}
-           <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-slate-700 text-slate-400 rounded-lg hover:bg-slate-600 border border-slate-600"><Icon name="Plus" className="w-4 h-4"/></button>
+           <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-stone-600 text-stone-400 rounded-lg hover:bg-stone-500 border border-stone-500"><Icon name="Plus" className="w-4 h-4"/></button>
         </div>
 
-        {/* 第二層：Subcategory (小分類) */}
-        <div className="bg-slate-700 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-slate-600 shadow-inner">
-           <div className="text-slate-300 text-xs font-bold shrink-0 px-1">次分類</div>
+        {/* 第二層：Subcategory (小分類) - Morandi Zinc (Cool Grey) */}
+        <div className="bg-stone-600 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-stone-500 shadow-inner">
+           <div className="text-stone-300 text-xs font-bold shrink-0 px-1">次分類</div>
            {activeCategory && allData[activeCategory] && Object.keys(allData[activeCategory]).map(sub => (
              <button key={sub} 
                 {...bindLongPress('subcategory', sub, activeCategory)}
                 onClick={()=>{
-                    if (ignoreClick.current) return; // 如果是長按，就不執行切換
+                    if (ignoreClick.current) return;
                     setActiveSubcategory(sub);
                     const tabs = Object.keys(allData[activeCategory][sub]||{});
                     setActiveTab(tabs[0]||'');
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('subcategory', sub)}
-                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors ${activeSubcategory===sub?'bg-sky-600 text-white font-bold':'bg-slate-600 text-slate-300 hover:bg-slate-500'}`}>
+                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors ${activeSubcategory===sub?'bg-zinc-500 text-white font-bold':'bg-stone-500 text-stone-300 hover:bg-stone-400'}`}>
                 {sub}
              </button>
            ))}
-           {activeCategory && <button onClick={()=>setAddingType('subcategory')} className="px-2 py-1 bg-slate-600 text-slate-400 rounded-lg hover:bg-slate-500"><Icon name="Plus" className="w-4 h-4"/></button>}
+           {activeCategory && <button onClick={()=>setAddingType('subcategory')} className="px-2 py-1 bg-stone-500 text-stone-300 rounded-lg hover:bg-stone-400"><Icon name="Plus" className="w-4 h-4"/></button>}
         </div>
 
-        {/* 第三層：Tab (清單/項目) */}
-        <div className="bg-slate-600 p-2 flex overflow-x-auto gap-2 no-scrollbar">
+        {/* 第三層：Tab (清單/項目) - Morandi Slate (Blue Grey) */}
+        <div className="bg-stone-500 p-2 flex overflow-x-auto gap-2 no-scrollbar">
            {activeCategory && activeSubcategory && allData[activeCategory][activeSubcategory] && Object.keys(allData[activeCategory][activeSubcategory]).map(tab => (
              <button key={tab} 
                 {...bindLongPress('tab', tab, activeCategory, activeSubcategory)}
@@ -576,41 +576,41 @@ const UniversalSelector = () => {
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('tab', tab)}
-                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab===tab?'bg-teal-500 text-white font-bold':'bg-slate-500 text-slate-200 hover:bg-slate-400'}`}>
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab===tab?'bg-slate-500 text-white font-bold':'bg-stone-400 text-stone-200 hover:bg-stone-300'}`}>
                 {tab}
              </button>
            ))}
-           {activeSubcategory && <button onClick={()=>{ setAddingType('tab'); setTargetCatForAdd(activeCategory); setTargetSubForAdd(activeSubcategory); }} className="px-2 py-1 bg-slate-500 text-slate-300 rounded-full hover:bg-slate-400"><Icon name="Plus" className="w-4 h-4"/></button>}
+           {activeSubcategory && <button onClick={()=>{ setAddingType('tab'); setTargetCatForAdd(activeCategory); setTargetSubForAdd(activeSubcategory); }} className="px-2 py-1 bg-stone-400 text-stone-200 rounded-full hover:bg-stone-300"><Icon name="Plus" className="w-4 h-4"/></button>}
         </div>
         
         <div className="flex-1 p-4 overflow-y-auto">
            {appState === 'input' && (
              <div className="flex flex-col h-full gap-4">
-               <div className="flex gap-2"><input value={inputValue} onChange={e=>setInputValue(e.target.value)} className="flex-1 border p-3 rounded-xl" placeholder={`新增至 ${activeTab || '清單'}...`}/><button onClick={addItem} className="bg-slate-800 text-white px-4 rounded-xl"><Icon name="Plus"/></button></div>
+               <div className="flex gap-2"><input value={inputValue} onChange={e=>setInputValue(e.target.value)} className="flex-1 border p-3 rounded-xl" placeholder={`新增至 ${activeTab || '清單'}...`}/><button onClick={addItem} className="bg-stone-700 text-white px-4 rounded-xl hover:bg-stone-600"><Icon name="Plus"/></button></div>
                <div className="flex-1 overflow-y-auto space-y-2">
                  {currentList.map((item,i) => (
-                   <div key={i} className="flex justify-between bg-slate-50 p-3 rounded border">
+                   <div key={i} className="flex justify-between bg-stone-50 p-3 rounded border border-stone-200">
                         <span className="text-black">{item}</span>
-                        <button onClick={()=>removeItem(i)} className="text-red-400"><Icon name="Trash2" className="w-4 h-4"/></button>
+                        <button onClick={()=>removeItem(i)} className="text-rose-400 hover:text-rose-500"><Icon name="Trash2" className="w-4 h-4"/></button>
                    </div>
                  ))}
-                 {currentList.length === 0 && <div className="text-center text-gray-400 mt-10">此清單沒有項目</div>}
+                 {currentList.length === 0 && <div className="text-center text-stone-400 mt-10">此清單沒有項目</div>}
                </div>
-               <button onClick={startBattle} disabled={currentList.length<2} className="w-full bg-teal-500 text-white py-4 rounded-xl font-bold disabled:bg-gray-200">開始 PK</button>
+               <button onClick={startBattle} disabled={currentList.length<2} className="w-full bg-stone-600 text-white py-4 rounded-xl font-bold disabled:bg-stone-200 transition-colors hover:bg-stone-500">開始 PK</button>
              </div>
            )}
            {appState === 'battle' && (
              <div className="h-full flex flex-col justify-center gap-4">
-                <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-teal-500 rounded-xl text-left bg-teal-50"><span className="text-xs text-teal-600 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
-                <div className="text-center text-slate-300 font-black italic">VS</div>
-                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-indigo-500 rounded-xl text-left bg-indigo-50"><span className="text-xs text-indigo-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
+                <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-stone-400 rounded-xl text-left bg-stone-100"><span className="text-xs text-stone-600 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
+                <div className="text-center text-stone-300 font-black italic">VS</div>
+                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-zinc-400 rounded-xl text-left bg-zinc-100"><span className="text-xs text-zinc-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
              </div>
            )}
            {appState === 'winner' && (
              <div className="h-full flex flex-col justify-center items-center text-center">
-                <Icon name="Trophy" className="w-20 h-20 text-yellow-500 mb-4"/>
+                <Icon name="Trophy" className="w-20 h-20 text-amber-400 mb-4"/>
                 <div className="text-4xl font-black mb-8 text-black">{currentKing}</div>
-                <button onClick={()=>setAppState('input')} className="bg-slate-800 text-white px-6 py-3 rounded-xl flex gap-2"><Icon name="RotateCcw"/> 重來</button>
+                <button onClick={()=>setAppState('input')} className="bg-stone-700 text-white px-6 py-3 rounded-xl flex gap-2 hover:bg-stone-600"><Icon name="RotateCcw"/> 重來</button>
              </div>
            )}
 
@@ -618,13 +618,13 @@ const UniversalSelector = () => {
            {actionMenu && (
              <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={()=>setActionMenu(null)}>
                 <div className="bg-white rounded-xl w-full max-w-xs overflow-hidden shadow-2xl p-2 flex flex-col gap-2" onClick={e=>e.stopPropagation()}>
-                    <div className="p-2 text-center border-b font-bold text-slate-700">對「{actionMenu.name}」進行操作</div>
+                    <div className="p-2 text-center border-b font-bold text-stone-700">對「{actionMenu.name}」進行操作</div>
                     
                     <button onClick={()=>{
                         setRenameConfig(actionMenu);
                         setRenameValue(actionMenu.name);
                         setActionMenu(null);
-                    }} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-800 font-medium">
+                    }} className="p-3 bg-stone-100 hover:bg-stone-200 rounded-lg text-stone-800 font-medium">
                         重新命名
                     </button>
 
@@ -635,12 +635,12 @@ const UniversalSelector = () => {
                             setMoveToCat('');
                             setMoveToSub('');
                             setActionMenu(null);
-                        }} className="p-3 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-800 font-medium">
+                        }} className="p-3 bg-stone-100 hover:bg-stone-200 rounded-lg text-stone-800 font-medium">
                             移動位置
                         </button>
                     )}
                     
-                    <button onClick={()=>setActionMenu(null)} className="p-3 text-red-400 hover:bg-red-50 rounded-lg">取消</button>
+                    <button onClick={()=>setActionMenu(null)} className="p-3 text-rose-400 hover:bg-rose-50 rounded-lg">取消</button>
                 </div>
              </div>
            )}
@@ -658,8 +658,8 @@ const UniversalSelector = () => {
                         placeholder="請輸入新名稱"
                     />
                     <div className="flex gap-2">
-                        <button onClick={()=>setRenameConfig(null)} className="flex-1 py-2 text-slate-500 bg-slate-100 rounded-lg">取消</button>
-                        <button onClick={executeRename} className="flex-1 py-2 bg-teal-500 text-white rounded-lg font-bold">確定</button>
+                        <button onClick={()=>setRenameConfig(null)} className="flex-1 py-2 text-stone-500 bg-stone-100 rounded-lg">取消</button>
+                        <button onClick={executeRename} className="flex-1 py-2 bg-stone-600 text-white rounded-lg font-bold">確定</button>
                     </div>
                 </div>
              </div>
@@ -669,7 +669,7 @@ const UniversalSelector = () => {
            {moveConfig && (
              <div className="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
                 <div className="bg-white rounded-xl w-full max-w-sm overflow-hidden flex flex-col shadow-2xl max-h-[80vh]">
-                    <div className="bg-slate-800 p-4 text-white font-bold flex justify-between items-center">
+                    <div className="bg-stone-700 p-4 text-white font-bold flex justify-between items-center">
                         <span>移動: {moveConfig.name}</span>
                         <button onClick={()=>setMoveConfig(null)}><Icon name="X" className="w-5 h-5"/></button>
                     </div>
@@ -677,41 +677,41 @@ const UniversalSelector = () => {
                     <div className="p-4 overflow-y-auto flex-1 flex flex-col gap-3">
                         {/* 步驟 1: 選擇大分類 */}
                         <div>
-                            <div className="text-sm font-bold text-slate-500 mb-1">移動到哪個大分類？</div>
+                            <div className="text-sm font-bold text-stone-500 mb-1">移動到哪個大分類？</div>
                             <div className="flex flex-wrap gap-2">
                                 {Object.keys(allData).map(cat => (
                                     <button key={cat} 
                                         onClick={()=>{ setMoveToCat(cat); setMoveToSub(''); }}
-                                        className={`px-3 py-2 rounded-lg text-sm border ${moveToCat===cat ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-700 border-slate-300'}`}>
+                                        className={`px-3 py-2 rounded-lg text-sm border ${moveToCat===cat ? 'bg-stone-500 text-white border-stone-500' : 'bg-white text-stone-600 border-stone-200'}`}>
                                         {cat}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
-                        {/* 步驟 2: 選擇小分類 (只有在移動 Tab 且已選大分類時出現) */}
+                        {/* 步驟 2: 選擇小分類 */}
                         {moveConfig.type === 'tab' && moveToCat && (
                             <div className="animate-fade-in">
-                                <div className="text-sm font-bold text-slate-500 mb-1 mt-2">選擇「{moveToCat}」下的小分類：</div>
+                                <div className="text-sm font-bold text-stone-500 mb-1 mt-2">選擇「{moveToCat}」下的小分類：</div>
                                 <div className="flex flex-wrap gap-2">
                                     {Object.keys(allData[moveToCat] || {}).map(sub => (
                                         <button key={sub}
                                             onClick={()=>setMoveToSub(sub)}
-                                            className={`px-3 py-2 rounded-lg text-sm border ${moveToSub===sub ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-700 border-slate-300'}`}>
+                                            className={`px-3 py-2 rounded-lg text-sm border ${moveToSub===sub ? 'bg-zinc-500 text-white border-zinc-500' : 'bg-white text-stone-600 border-stone-200'}`}>
                                             {sub}
                                         </button>
                                     ))}
-                                    {Object.keys(allData[moveToCat] || {}).length === 0 && <span className="text-xs text-red-400">此大分類下無小分類，無法移動</span>}
+                                    {Object.keys(allData[moveToCat] || {}).length === 0 && <span className="text-xs text-rose-400">此大分類下無小分類，無法移動</span>}
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    <div className="p-4 border-t bg-slate-50 flex gap-2">
-                        <button onClick={()=>setMoveConfig(null)} className="flex-1 py-2 text-slate-500 bg-white border rounded-lg">取消</button>
+                    <div className="p-4 border-t bg-stone-50 flex gap-2">
+                        <button onClick={()=>setMoveConfig(null)} className="flex-1 py-2 text-stone-500 bg-white border rounded-lg">取消</button>
                         <button onClick={executeMove} 
                             disabled={!moveToCat || (moveConfig.type==='tab' && !moveToSub)}
-                            className="flex-1 py-2 bg-teal-500 text-white rounded-lg font-bold disabled:bg-slate-300 disabled:cursor-not-allowed">
+                            className="flex-1 py-2 bg-stone-600 text-white rounded-lg font-bold disabled:bg-stone-300 disabled:cursor-not-allowed">
                             確認移動
                         </button>
                     </div>
