@@ -571,7 +571,11 @@ const UniversalSelector = () => {
         </div>
 
         {/* 第三層：Tab (清單/項目) - 背景 Stone 500 (淺) */}
-        <div className="bg-stone-500 p-2 flex overflow-x-auto gap-2 no-scrollbar">
+        {/* 新增 items-center 確保垂直對齊，no-scrollbar 隱藏卷軸 */}
+        <div className="bg-stone-500 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar">
+           {/* 新增標籤：使用 text-stone-200 在淺背景上保持對比度，位置對齊上方 */}
+           <div className="text-stone-200 text-xs font-bold shrink-0 px-1">清　單</div>
+           
            {activeCategory && activeSubcategory && allData[activeCategory][activeSubcategory] && Object.keys(allData[activeCategory][activeSubcategory]).map(tab => (
              <button key={tab} 
                 {...bindLongPress('tab', tab, activeCategory, activeSubcategory)}
@@ -612,8 +616,8 @@ const UniversalSelector = () => {
                 {/* King: 移除 bg-teal-50，改為 bg-white */}
                 <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-teal-500 rounded-xl text-left bg-white"><span className="text-xs text-teal-600 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
                 <div className="text-center text-stone-300 font-black italic">VS</div>
-                {/* Challenger: 邊框改為 rose-400 (沙漠玫瑰) */}
-                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-rose-400 rounded-xl text-left bg-white"><span className="text-xs text-rose-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
+                {/* Challenger: 邊框改為 rose-300, 文字改為 rose-300 (與登出按鈕統一) */}
+                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-rose-300 rounded-xl text-left bg-white"><span className="text-xs text-rose-300 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
              </div>
            )}
            {appState === 'winner' && (
