@@ -537,13 +537,13 @@ const UniversalSelector = () => {
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('category', cat)}
-                // 被選時：Zinc-600 (深灰冷色)；未選：Stone-600
+                // 被選時：Zinc-600 (深灰冷色)；未選：Stone-600 (文字顏色 text-stone-400)
                 className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors border ${activeCategory===cat?'bg-zinc-600 border-zinc-500 text-white font-bold':'bg-stone-600 border-transparent text-stone-400 hover:bg-stone-500'}`}>
                 {cat}
              </button>
            ))}
-           {/* 新增按鈕：Teal 色文字 */}
-           <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-stone-600 text-teal-400 rounded-lg hover:bg-stone-500 border border-stone-500"><Icon name="Plus" className="w-4 h-4"/></button>
+           {/* 新增按鈕：移除邊框 */}
+           <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-stone-600 text-teal-400 rounded-lg hover:bg-stone-500"><Icon name="Plus" className="w-4 h-4"/></button>
         </div>
 
         {/* 第二層：Subcategory (小分類) - 背景 Stone 600 (中深) */}
@@ -560,8 +560,8 @@ const UniversalSelector = () => {
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('subcategory', sub)}
-                // 被選時：Zinc-600 (與大分類相同)；未選：Stone-500
-                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors ${activeSubcategory===sub?'bg-zinc-600 text-white font-bold':'bg-stone-500 text-stone-300 hover:bg-stone-400'}`}>
+                // 1. 被選時：增加 border-zinc-500 2. 未選時：文字改為 text-stone-400 (跟大分類一致)
+                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors border ${activeSubcategory===sub?'bg-zinc-600 border-zinc-500 text-white font-bold':'bg-stone-500 border-transparent text-stone-400 hover:bg-stone-400'}`}>
                 {sub}
              </button>
            ))}
@@ -579,12 +579,13 @@ const UniversalSelector = () => {
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('tab', tab)}
-                // 被選時：Teal-500 (青色)
-                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab===tab?'bg-teal-500 text-white font-bold':'bg-stone-400 text-stone-200 hover:bg-stone-300'}`}>
+                // 形狀改為 rounded-lg
+                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors ${activeTab===tab?'bg-teal-500 text-white font-bold':'bg-stone-400 text-stone-200 hover:bg-stone-300'}`}>
                 {tab}
              </button>
            ))}
-           {activeSubcategory && <button onClick={()=>{ setAddingType('tab'); setTargetCatForAdd(activeCategory); setTargetSubForAdd(activeSubcategory); }} className="px-2 py-1 bg-stone-400 text-teal-200 rounded-full hover:bg-stone-300"><Icon name="Plus" className="w-4 h-4"/></button>}
+           {/* Tab 新增按鈕：形狀改為 rounded-lg */}
+           {activeSubcategory && <button onClick={()=>{ setAddingType('tab'); setTargetCatForAdd(activeCategory); setTargetSubForAdd(activeSubcategory); }} className="px-2 py-1 bg-stone-400 text-teal-200 rounded-lg hover:bg-stone-300"><Icon name="Plus" className="w-4 h-4"/></button>}
         </div>
         
         <div className="flex-1 p-4 overflow-y-auto">
@@ -606,11 +607,11 @@ const UniversalSelector = () => {
            )}
            {appState === 'battle' && (
              <div className="h-full flex flex-col justify-center gap-4">
-                {/* King: Teal 色系 */}
-                <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-teal-500 rounded-xl text-left bg-teal-50"><span className="text-xs text-teal-600 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
+                {/* King: 移除 bg-teal-50，改為 bg-white */}
+                <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-teal-500 rounded-xl text-left bg-white"><span className="text-xs text-teal-600 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
                 <div className="text-center text-stone-300 font-black italic">VS</div>
-                {/* Challenger: Rose 色系 */}
-                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-rose-500 rounded-xl text-left bg-rose-50"><span className="text-xs text-rose-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
+                {/* Challenger: 移除 bg-rose-50，改為 bg-white */}
+                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-rose-500 rounded-xl text-left bg-white"><span className="text-xs text-rose-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
              </div>
            )}
            {appState === 'winner' && (
