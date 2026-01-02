@@ -521,7 +521,7 @@ const UniversalSelector = () => {
              </div>
         )}
 
-        {/* 第一層：Category (大分類) - 背景 Stone 700 (次深) */}
+        {/* 第一層：Category (大分類) - 背景 Stone 700 */}
         <div className="bg-stone-700 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-stone-600">
            <div className="text-stone-400 text-xs font-bold shrink-0 px-1">大分類</div>
            {Object.keys(allData).map(cat => (
@@ -542,13 +542,14 @@ const UniversalSelector = () => {
                 {cat}
              </button>
            ))}
-           {/* 新增按鈕：移除邊框 */}
-           <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-stone-600 text-teal-400 rounded-lg hover:bg-stone-500"><Icon name="Plus" className="w-4 h-4"/></button>
+           {/* 新增按鈕：淺灰色 */}
+           <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-stone-600 text-stone-400 rounded-lg hover:bg-stone-500"><Icon name="Plus" className="w-4 h-4"/></button>
         </div>
 
-        {/* 第二層：Subcategory (小分類) - 背景 Stone 600 (中深) */}
-        <div className="bg-stone-600 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-stone-500 shadow-inner">
-           <div className="text-stone-300 text-xs font-bold shrink-0 px-1">次分類</div>
+        {/* 第二層：Subcategory (小分類) - 背景 Stone 700 (與大分類統一) */}
+        <div className="bg-stone-700 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-stone-600 shadow-inner">
+           {/* 文字顏色：與大分類統一 (text-stone-400) */}
+           <div className="text-stone-400 text-xs font-bold shrink-0 px-1">次分類</div>
            {activeCategory && allData[activeCategory] && Object.keys(allData[activeCategory]).map(sub => (
              <button key={sub} 
                 {...bindLongPress('subcategory', sub, activeCategory)}
@@ -560,12 +561,13 @@ const UniversalSelector = () => {
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('subcategory', sub)}
-                // 1. 被選時：增加 border-zinc-500 2. 未選時：文字改為 text-stone-400 (跟大分類一致)
-                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors border ${activeSubcategory===sub?'bg-zinc-600 border-zinc-500 text-white font-bold':'bg-stone-500 border-transparent text-stone-400 hover:bg-stone-400'}`}>
+                // 樣式：完全與大分類統一
+                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors border ${activeSubcategory===sub?'bg-zinc-600 border-zinc-500 text-white font-bold':'bg-stone-600 border-transparent text-stone-400 hover:bg-stone-500'}`}>
                 {sub}
              </button>
            ))}
-           {activeCategory && <button onClick={()=>setAddingType('subcategory')} className="px-2 py-1 bg-stone-500 text-teal-300 rounded-lg hover:bg-stone-400"><Icon name="Plus" className="w-4 h-4"/></button>}
+           {/* 新增按鈕：淺灰色 */}
+           {activeCategory && <button onClick={()=>setAddingType('subcategory')} className="px-2 py-1 bg-stone-600 text-stone-400 rounded-lg hover:bg-stone-500"><Icon name="Plus" className="w-4 h-4"/></button>}
         </div>
 
         {/* 第三層：Tab (清單/項目) - 背景 Stone 500 (淺) */}
@@ -610,8 +612,8 @@ const UniversalSelector = () => {
                 {/* King: 移除 bg-teal-50，改為 bg-white */}
                 <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-teal-500 rounded-xl text-left bg-white"><span className="text-xs text-teal-600 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
                 <div className="text-center text-stone-300 font-black italic">VS</div>
-                {/* Challenger: 移除 bg-rose-50，改為 bg-white */}
-                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-rose-500 rounded-xl text-left bg-white"><span className="text-xs text-rose-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
+                {/* Challenger: 邊框改為 rose-400 (沙漠玫瑰) */}
+                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-rose-400 rounded-xl text-left bg-white"><span className="text-xs text-rose-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
              </div>
            )}
            {appState === 'winner' && (
