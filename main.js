@@ -88,7 +88,7 @@ const UniversalSelector = () => {
   const [targetCatForAdd, setTargetCatForAdd] = useState('');
   const [targetSubForAdd, setTargetSubForAdd] = useState('');
 
-  // 修改手機狀態列顏色 (配合 APP 標題 bg-stone-700 #44403c)
+  // 修改手機狀態列顏色 (配合 APP 標題 bg-stone-800 #292524)
   useEffect(() => {
     let meta = document.querySelector('meta[name="theme-color"]');
     if (!meta) {
@@ -96,7 +96,7 @@ const UniversalSelector = () => {
         meta.name = "theme-color";
         document.head.appendChild(meta);
     }
-    meta.content = "#44403c";
+    meta.content = "#292524";
   }, []);
 
   // 使用 Ref 追蹤當前選擇，確保 onSnapshot 更新時不會重置選擇
@@ -395,9 +395,17 @@ const UniversalSelector = () => {
   };
 
   const addItem = () => {
-    if (!inputValue.trim()) return;
+    const val = inputValue.trim();
+    if (!val) return;
+    
+    // 檢查重複：如果項目已存在，跳出提示並停止新增
+    if (currentList.includes(val)) {
+        alert(`無法新增：項目「${val}」已存在。`);
+        return;
+    }
+
     const newData = JSON.parse(JSON.stringify(allData));
-    newData[activeCategory][activeSubcategory][activeTab].push(inputValue.trim());
+    newData[activeCategory][activeSubcategory][activeTab].push(val);
     updateData(newData);
     setInputValue('');
   };
@@ -608,19 +616,23 @@ const UniversalSelector = () => {
              </div>
            )}
            {appState === 'battle' && (
-             <div className="h-full flex flex-col justify-center gap-4">
-                {/* King: 顏色互換 -> 淺玫瑰色 (rose-300) */}
-                <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-rose-300 rounded-xl text-left bg-white"><span className="text-xs text-rose-300 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
-                
-                <div className="text-center text-stone-300 font-black italic">VS</div>
-                
-                {/* Challenger: 顏色互換 -> Teal 色 (teal-500/600) */}
-                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-teal-500 rounded-xl text-left bg-white"><span className="text-xs text-teal-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
-                
-                {/* 新增退出按鈕 */}
-                <button onClick={()=>setAppState('input')} className="mt-8 py-3 text-stone-400 hover:text-stone-600 flex justify-center items-center gap-2">
-                    <Icon name="LogOut" className="w-4 h-4"/> 結束 PK
-                </button>
+             <div className="h-full flex flex-col">
+                <div className="flex-1 flex flex-col justify-center gap-4">
+                    {/* King: 顏色互換 -> 淺玫瑰色 (rose-300) */}
+                    <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-rose-300 rounded-xl text-left bg-white"><span className="text-xs text-rose-300 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
+                    
+                    <div className="text-center text-stone-300 font-black italic">VS</div>
+                    
+                    {/* Challenger: 顏色互換 -> Teal 色 (teal-500/600) */}
+                    <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-teal-500 rounded-xl text-left bg-white"><span className="text-xs text-teal-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
+                </div>
+
+                {/* 退出按鈕 (移至底部，移除圖示，僅保留文字) */}
+                <div className="p-4 pb-8">
+                    <button onClick={()=>setAppState('input')} className="w-full py-3 text-stone-400 hover:text-stone-600 font-bold text-sm tracking-widest">
+                        結束 PK
+                    </button>
+                </div>
              </div>
            )}
            {appState === 'winner' && (
