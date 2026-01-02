@@ -316,7 +316,16 @@ const UniversalSelector = () => {
   };
 
   const handleLogin = async () => {
-    try { await signInWithPopup(auth, googleProvider); } catch (error) { alert("登入失敗: " + error.message); }
+    // 1. 點擊瞬間先設為載入中，避免彈窗關閉後還看到登入畫面
+    setLoading(true); 
+    try { 
+      await signInWithPopup(auth, googleProvider); 
+      // 登入成功後 onAuthStateChanged 會接手處理 loading 狀態，這裡不用管
+    } catch (error) { 
+      // 2. 如果使用者取消或失敗，才把 loading 關掉讓即顯示登入按鈕
+      setLoading(false);
+      alert("登入失敗: " + error.message); 
+    }
   };
   
   const handleLogout = async () => {
