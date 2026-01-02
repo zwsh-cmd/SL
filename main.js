@@ -442,9 +442,9 @@ const UniversalSelector = () => {
   );
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-stone-700 overflow-hidden">
+    <div className="fixed inset-0 w-full h-full bg-stone-800 overflow-hidden">
       <div className="w-full h-full flex flex-col relative bg-white">
-        <div className="bg-stone-700 p-4 text-white flex justify-between items-center">
+        <div className="bg-stone-800 p-4 text-white flex justify-between items-center">
            <h1 className="font-bold flex gap-2 items-center"><img src="./icon.png" className="w-8 h-8 object-contain" alt="Logo"/> AXELITH</h1>
            <div className="flex gap-2">
              <button onClick={handleLogout}><Icon name="LogOut" className="w-5 h-5 text-rose-300"/></button>
@@ -521,7 +521,7 @@ const UniversalSelector = () => {
              </div>
         )}
 
-        {/* 第一層：Category (大分類) - Morandi Stone (Warm Grey) */}
+        {/* 第一層：Category (大分類) - 背景 Stone 700 (次深) */}
         <div className="bg-stone-700 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-stone-600">
            <div className="text-stone-400 text-xs font-bold shrink-0 px-1">大分類</div>
            {Object.keys(allData).map(cat => (
@@ -537,14 +537,16 @@ const UniversalSelector = () => {
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('category', cat)}
-                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors border ${activeCategory===cat?'bg-stone-500 border-stone-400 text-white font-bold':'bg-stone-600 border-transparent text-stone-400 hover:bg-stone-500'}`}>
+                // 被選時：Zinc-600 (深灰冷色)；未選：Stone-600
+                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors border ${activeCategory===cat?'bg-zinc-600 border-zinc-500 text-white font-bold':'bg-stone-600 border-transparent text-stone-400 hover:bg-stone-500'}`}>
                 {cat}
              </button>
            ))}
-           <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-stone-600 text-stone-400 rounded-lg hover:bg-stone-500 border border-stone-500"><Icon name="Plus" className="w-4 h-4"/></button>
+           {/* 新增按鈕：Teal 色文字 */}
+           <button onClick={()=>setAddingType('category')} className="px-2 py-1 bg-stone-600 text-teal-400 rounded-lg hover:bg-stone-500 border border-stone-500"><Icon name="Plus" className="w-4 h-4"/></button>
         </div>
 
-        {/* 第二層：Subcategory (小分類) - Morandi Zinc (Cool Grey) */}
+        {/* 第二層：Subcategory (小分類) - 背景 Stone 600 (中深) */}
         <div className="bg-stone-600 p-2 flex items-center overflow-x-auto gap-2 no-scrollbar border-b border-stone-500 shadow-inner">
            <div className="text-stone-300 text-xs font-bold shrink-0 px-1">次分類</div>
            {activeCategory && allData[activeCategory] && Object.keys(allData[activeCategory]).map(sub => (
@@ -558,14 +560,15 @@ const UniversalSelector = () => {
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('subcategory', sub)}
-                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors ${activeSubcategory===sub?'bg-zinc-500 text-white font-bold':'bg-stone-500 text-stone-300 hover:bg-stone-400'}`}>
+                // 被選時：Zinc-600 (與大分類相同)；未選：Stone-500
+                className={`px-3 py-1 rounded-lg text-sm whitespace-nowrap transition-colors ${activeSubcategory===sub?'bg-zinc-600 text-white font-bold':'bg-stone-500 text-stone-300 hover:bg-stone-400'}`}>
                 {sub}
              </button>
            ))}
-           {activeCategory && <button onClick={()=>setAddingType('subcategory')} className="px-2 py-1 bg-stone-500 text-stone-300 rounded-lg hover:bg-stone-400"><Icon name="Plus" className="w-4 h-4"/></button>}
+           {activeCategory && <button onClick={()=>setAddingType('subcategory')} className="px-2 py-1 bg-stone-500 text-teal-300 rounded-lg hover:bg-stone-400"><Icon name="Plus" className="w-4 h-4"/></button>}
         </div>
 
-        {/* 第三層：Tab (清單/項目) - Morandi Slate (Blue Grey) */}
+        {/* 第三層：Tab (清單/項目) - 背景 Stone 500 (淺) */}
         <div className="bg-stone-500 p-2 flex overflow-x-auto gap-2 no-scrollbar">
            {activeCategory && activeSubcategory && allData[activeCategory][activeSubcategory] && Object.keys(allData[activeCategory][activeSubcategory]).map(tab => (
              <button key={tab} 
@@ -576,11 +579,12 @@ const UniversalSelector = () => {
                     setAppState('input');
                 }} 
                 onDoubleClick={()=>deleteItem('tab', tab)}
-                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab===tab?'bg-slate-500 text-white font-bold':'bg-stone-400 text-stone-200 hover:bg-stone-300'}`}>
+                // 被選時：Teal-500 (青色)
+                className={`px-3 py-1 rounded-full text-sm whitespace-nowrap transition-colors ${activeTab===tab?'bg-teal-500 text-white font-bold':'bg-stone-400 text-stone-200 hover:bg-stone-300'}`}>
                 {tab}
              </button>
            ))}
-           {activeSubcategory && <button onClick={()=>{ setAddingType('tab'); setTargetCatForAdd(activeCategory); setTargetSubForAdd(activeSubcategory); }} className="px-2 py-1 bg-stone-400 text-stone-200 rounded-full hover:bg-stone-300"><Icon name="Plus" className="w-4 h-4"/></button>}
+           {activeSubcategory && <button onClick={()=>{ setAddingType('tab'); setTargetCatForAdd(activeCategory); setTargetSubForAdd(activeSubcategory); }} className="px-2 py-1 bg-stone-400 text-teal-200 rounded-full hover:bg-stone-300"><Icon name="Plus" className="w-4 h-4"/></button>}
         </div>
         
         <div className="flex-1 p-4 overflow-y-auto">
@@ -596,14 +600,17 @@ const UniversalSelector = () => {
                  ))}
                  {currentList.length === 0 && <div className="text-center text-stone-400 mt-10">此清單沒有項目</div>}
                </div>
-               <button onClick={startBattle} disabled={currentList.length<2} className="w-full bg-stone-600 text-white py-4 rounded-xl font-bold disabled:bg-stone-200 transition-colors hover:bg-stone-500">開始 PK</button>
+               {/* Start PK 按鈕：Teal 色 */}
+               <button onClick={startBattle} disabled={currentList.length<2} className="w-full bg-teal-600 text-white py-4 rounded-xl font-bold disabled:bg-stone-200 transition-colors hover:bg-teal-500">開始 PK</button>
              </div>
            )}
            {appState === 'battle' && (
              <div className="h-full flex flex-col justify-center gap-4">
-                <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-stone-400 rounded-xl text-left bg-stone-100"><span className="text-xs text-stone-600 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
+                {/* King: Teal 色系 */}
+                <button onClick={()=>chooseWinner(currentKing)} className="p-6 border-2 border-teal-500 rounded-xl text-left bg-teal-50"><span className="text-xs text-teal-600 font-bold">KING</span><div className="text-2xl font-bold text-black">{currentKing}</div></button>
                 <div className="text-center text-stone-300 font-black italic">VS</div>
-                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-zinc-400 rounded-xl text-left bg-zinc-100"><span className="text-xs text-zinc-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
+                {/* Challenger: Rose 色系 */}
+                <button onClick={()=>chooseWinner(challenger)} className="p-6 border-2 border-rose-500 rounded-xl text-left bg-rose-50"><span className="text-xs text-rose-600 font-bold">CHALLENGER</span><div className="text-2xl font-bold text-black">{challenger}</div></button>
              </div>
            )}
            {appState === 'winner' && (
