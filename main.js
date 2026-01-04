@@ -435,8 +435,21 @@ const UniversalSelector = () => {
     } else {
       setCurrentKing(winner);
       setAppState('winner');
+      // 進入贏家畫面時，推入歷史紀錄，讓返回鍵生效
+      window.history.pushState({ state: 'winner' }, '');
     }
   };
+
+  // 監聽返回鍵，從贏家畫面回到清單
+  useEffect(() => {
+    const handlePopState = () => {
+      if (appState === 'winner') {
+        setAppState('input');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [appState]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate-400">載入中...</div>;
   
@@ -639,7 +652,10 @@ const UniversalSelector = () => {
              <div className="h-full flex flex-col justify-center items-center text-center">
                 <Icon name="Trophy" className="w-20 h-20 text-amber-400 mb-4"/>
                 <div className="text-4xl font-black mb-8 text-black">{currentKing}</div>
-                <button onClick={()=>setAppState('input')} className="bg-stone-700 text-white px-6 py-3 rounded-xl flex gap-2 hover:bg-stone-600"><Icon name="RotateCcw"/> 重來</button>
+                <div className="flex flex-col gap-3">
+                    <button onClick={startBattle} className="bg-stone-700 text-white px-6 py-3 rounded-xl flex gap-2 hover:bg-stone-600 justify-center"><Icon name="RotateCcw"/> 重來</button>
+                    <button onClick={()=>setAppState('input')} className="text-stone-500 font-bold py-2 hover:text-stone-700">回到清單</button>
+                </div>
              </div>
            )}
 
